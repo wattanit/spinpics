@@ -1,5 +1,6 @@
 import type { AppState, Gallery } from './types';
 import { storage } from './lib/storage';
+import { WheelEngine } from './lib/wheel';
 
 export class App {
   private state: AppState = {
@@ -8,6 +9,7 @@ export class App {
     playSession: null,
     galleries: []
   };
+  private wheelEngine!: WheelEngine;
 
   async initialize(): Promise<void> {
     console.log('🎯 Initializing Photo Wheel Spinner...');
@@ -16,6 +18,10 @@ export class App {
       // Initialize storage layer
       await storage.initialize();
       console.log('✅ Storage initialized');
+      
+      // Initialize wheel engine
+      this.wheelEngine = new WheelEngine(storage);
+      console.log('✅ Wheel engine initialized');
       
       // Set up event listeners
       this.setupEventListeners();
@@ -107,6 +113,21 @@ export class App {
     document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
         this.hideAllModals();
+      }
+    });
+
+    // Play screen controls
+    document.getElementById('spin-btn')?.addEventListener('click', () => {
+      this.spin();
+    });
+
+    document.getElementById('reset-session-btn')?.addEventListener('click', () => {
+      this.resetSession();
+    });
+
+    document.getElementById('back-to-gallery-btn')?.addEventListener('click', () => {
+      if (this.state.currentGallery) {
+        this.editGallery(this.state.currentGallery.galleryId);
       }
     });
   }
@@ -276,14 +297,18 @@ export class App {
       return;
     }
 
-    if (gallery.photos.length === 0) {
-      this.showError('This gallery has no photos to spin!');
+    // Validate gallery for play
+    const validation = this.wheelEngine.validateGalleryForPlay(gallery);
+    if (!validation.isValid) {
+      this.showError(`Cannot play this gallery:\n${validation.errors.join('\n')}`);
       return;
     }
 
     this.state.currentGallery = gallery;
+    this.state.playSession = this.wheelEngine.createPlaySession(gallery);
     this.showScreen('play');
-    // TODO: Initialize wheel and game logic
+    
+    await this.initializePlayScreen();
   }
 
   private populateGalleryEditor(gallery: Gallery): void {
@@ -683,5 +708,226 @@ export class App {
       console.error('Failed to delete gallery:', error);
       this.showError('Failed to delete gallery');
     }
+  }
+
+  // Play Screen Methods
+  private async initializePlayScreen(): Promise<void> {
+    if (!this.state.currentGallery || !this.state.playSession) {
+      this.showError('No gallery or session active');
+      return;
+    }
+
+    try {
+      // Update play screen header
+      const galleryNameEl = document.getElementById('play-gallery-name');
+      if (galleryNameEl) {
+        galleryNameEl.textContent = this.state.currentGallery.name;
+      }
+
+      // Show/hide reset button based on spin mode
+      const resetBtn = document.getElementById('reset-session-btn');
+      if (resetBtn) {
+        resetBtn.style.display = this.state.playSession.spinMode === 'consume' ? 'block' : 'none';
+      }
+
+      // Update session stats
+      this.updateSessionStats();
+
+      // Initialize wheel visualization (placeholder for Phase 4)
+      this.renderWheelPlaceholder();
+
+      // Clear any previous results
+      this.clearPlayResults();
+
+    } catch (error) {
+      console.error('Failed to initialize play screen:', error);
+      this.showError('Failed to initialize play screen');
+    }
+  }
+
+  private updateSessionStats(): void {
+    if (!this.state.currentGallery || !this.state.playSession) return;
+
+    const stats = this.wheelEngine.getSessionStatistics(this.state.playSession, this.state.currentGallery);
+    
+    const statsContainer = document.getElementById('session-stats');
+    if (statsContainer) {
+      statsContainer.innerHTML = `
+        <div class="stat-item">
+          <span class="stat-label">Total Photos:</span>
+          <span class="stat-value">${stats.totalPhotos}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Eligible Photos:</span>
+          <span class="stat-value">${stats.eligiblePhotos}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Chances:</span>
+          <span class="stat-value">${stats.totalCurrentChances}</span>
+        </div>
+        ${this.state.playSession.spinMode === 'consume' ? `
+          <div class="stat-item">
+            <span class="stat-label">Consumed:</span>
+            <span class="stat-value">${stats.consumedChances}</span>
+          </div>
+        ` : ''}
+      `;
+    }
+  }
+
+  private renderWheelPlaceholder(): void {
+    // Placeholder for Phase 4 - actual wheel rendering
+    const wheelContainer = document.getElementById('wheel-container');
+    if (wheelContainer && this.state.currentGallery && this.state.playSession) {
+      const eligiblePhotos = this.state.currentGallery.photos.filter(photo => {
+        const currentChance = this.state.playSession!.currentChances.get(photo.photoId) || 0;
+        return currentChance > 0;
+      });
+
+      wheelContainer.innerHTML = `
+        <div class="wheel-placeholder">
+          <div class="wheel-center">
+            <h3>Wheel Ready</h3>
+            <p>${eligiblePhotos.length} photos eligible</p>
+            <p>Click "Spin" to play!</p>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  private clearPlayResults(): void {
+    const resultContainer = document.getElementById('spin-result');
+    if (resultContainer) {
+      resultContainer.innerHTML = '';
+      resultContainer.style.display = 'none';
+    }
+  }
+
+  private async spin(): Promise<void> {
+    if (!this.state.currentGallery || !this.state.playSession) {
+      this.showError('No active game session');
+      return;
+    }
+
+    try {
+      // Disable spin button during animation
+      const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+      if (spinBtn) {
+        spinBtn.disabled = true;
+        spinBtn.textContent = 'Spinning...';
+      }
+
+      // Perform the spin
+      const winningPhotoId = this.wheelEngine.spinWheel(this.state.playSession, this.state.currentGallery.photos);
+      
+      if (!winningPhotoId) {
+        this.showError('No eligible photos to spin! All chances may be consumed.');
+        return;
+      }
+
+      // Find winning photo and category
+      const winningPhoto = this.state.currentGallery.photos.find(p => p.photoId === winningPhotoId);
+      const winningCategory = this.state.currentGallery.categories.find(c => c.categoryId === winningPhoto?.categoryId);
+
+      if (!winningPhoto) {
+        this.showError('Error finding winning photo');
+        return;
+      }
+
+      // Simulate wheel spin animation (placeholder for Phase 4)
+      await this.simulateWheelAnimation();
+
+      // Update session state for consume mode
+      this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningPhotoId);
+
+      // Display result
+      await this.displaySpinResult(winningPhoto, winningCategory);
+
+      // Update session stats
+      this.updateSessionStats();
+
+    } catch (error) {
+      console.error('Error during spin:', error);
+      this.showError('Error during spin');
+    } finally {
+      // Re-enable spin button
+      const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+      if (spinBtn) {
+        spinBtn.disabled = false;
+        spinBtn.textContent = 'Spin';
+      }
+    }
+  }
+
+  private async simulateWheelAnimation(): Promise<void> {
+    // Placeholder animation for Phase 4 - just a simple delay
+    return new Promise(resolve => {
+      setTimeout(resolve, 1500); // 1.5 second "animation"
+    });
+  }
+
+  private async displaySpinResult(winningPhoto: any, winningCategory: any): Promise<void> {
+    const resultContainer = document.getElementById('spin-result');
+    if (!resultContainer) return;
+
+    try {
+      // Load the winning photo
+      const photoBlob = await storage.getPhoto(winningPhoto.photoId);
+      if (!photoBlob) {
+        this.showError('Failed to load winning photo');
+        return;
+      }
+
+      const imageUrl = URL.createObjectURL(photoBlob);
+      
+      resultContainer.innerHTML = `
+        <div class="result-content">
+          <h3>🎉 Winner!</h3>
+          <div class="winning-photo" style="border-color: ${winningCategory?.color || '#ccc'}">
+            <img src="${imageUrl}" alt="Winning photo">
+          </div>
+          <div class="result-info">
+            <p><strong>Category:</strong> ${winningCategory?.name || 'Uncategorized'}</p>
+            <p><strong>Chance:</strong> ${winningPhoto.chance}</p>
+            ${this.state.playSession?.spinMode === 'consume' ? 
+              `<p><em>Remaining chances: ${(this.state.playSession.currentChances.get(winningPhoto.photoId) || 0)}</em></p>` : ''
+            }
+          </div>
+        </div>
+      `;
+      
+      resultContainer.style.display = 'block';
+      
+      // Clean up the URL object after some time
+      setTimeout(() => {
+        URL.revokeObjectURL(imageUrl);
+      }, 10000);
+
+    } catch (error) {
+      console.error('Failed to display result:', error);
+      this.showError('Failed to display result');
+    }
+  }
+
+  private resetSession(): void {
+    if (!this.state.playSession || !this.state.currentGallery) {
+      this.showError('No active session to reset');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to reset the session? This will restore all photo chances.')) {
+      return;
+    }
+
+    // Reset the play session
+    this.state.playSession = this.wheelEngine.resetPlaySession(this.state.playSession);
+    
+    // Update UI
+    this.updateSessionStats();
+    this.clearPlayResults();
+    this.renderWheelPlaceholder();
+    
+    console.log('Session reset completed');
   }
 }

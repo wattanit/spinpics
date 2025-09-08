@@ -206,12 +206,32 @@ Photo {
 - **Responsive design**: Mobile-first layout with touch-friendly controls
 - **Loading states**: Visual feedback during operations and error handling
 
-### 🚧 Current Phase: Game Configuration & Core Logic
+### ✅ Completed: Phase 3 Game Configuration & Core Logic
+
+#### 3.1 Spin Mode Configuration (✅ Complete)
+- **Static mode**: Chances remain unchanged after each spin
+- **Consume mode**: Winning photo chances reduce by 1 for session duration
+- **Mode selection**: UI toggle in gallery settings with persistence
+
+#### 3.2 Weighted Random Algorithm (✅ Complete)
+- **src/lib/wheel.ts**: Complete WheelEngine class implementation
+- **Probability-based selection**: Fair weighted random selection using chance values
+- **Edge case handling**: Zero chances, empty galleries, consumed photos
+- **Session state management**: Real-time chance tracking for consume mode
+
+#### 3.3 Play Screen & Game Logic (✅ Complete)
+- **Play session management**: Session creation, reset, and state tracking
+- **Gallery validation**: Ensure galleries are ready for gameplay
+- **Interactive gameplay**: Functional spin button with result display
+- **Navigation integration**: Seamless flow between gallery management and play
+- **Session statistics**: Real-time display of eligible photos and chance totals
+- **Result presentation**: Winning photo display with category and chance information
+
+### 🚧 Current Phase: Spinning Wheel UI & Animation
 
 ### 📋 Upcoming Phases
-1. **Phase 3**: Game logic and configuration (Weighted selection algorithms, Spin modes)
-2. **Phase 4**: Spinning wheel and animations (Canvas rendering, 60fps animations)  
-3. **Phase 5**: Final polish and optimization (Performance, UX improvements)
+1. **Phase 4**: Spinning wheel and animations (Canvas rendering, 60fps animations)  
+2. **Phase 5**: Final polish and optimization (Performance, UX improvements)
 
 ## Getting Started
 

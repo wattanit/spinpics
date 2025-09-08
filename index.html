@@ -96,14 +96,17 @@
             <!-- Game/Play Screen -->
             <section id="play-screen" class="screen">
                 <div class="screen-header">
-                    <button id="back-to-gallery" class="btn btn-text">← Back</button>
-                    <h2 id="play-gallery-title">Playing: Gallery Name</h2>
-                    <button id="reset-session" class="btn btn-secondary" style="display: none;">Reset Session</button>
+                    <button id="back-to-gallery-btn" class="btn btn-text">← Back</button>
+                    <h2 id="play-gallery-name">Playing: Gallery Name</h2>
+                    <button id="reset-session-btn" class="btn btn-secondary" style="display: none;">Reset Session</button>
                 </div>
+
+                <!-- Session Statistics -->
+                <div id="session-stats" class="session-stats"></div>
 
                 <div class="game-container">
                     <!-- Spinning Wheel -->
-                    <div class="wheel-container">
+                    <div id="wheel-container" class="wheel-container">
                         <canvas id="wheel-canvas" width="400" height="400"></canvas>
                         <div class="wheel-pointer"></div>
                     </div>
@@ -114,7 +117,7 @@
                     </div>
 
                     <!-- Result Display -->
-                    <div id="result-display" class="result-display" style="display: none;">
+                    <div id="spin-result" class="result-display" style="display: none;">
                         <h3>Winner!</h3>
                         <div id="winning-photo" class="winning-photo"></div>
                     </div>

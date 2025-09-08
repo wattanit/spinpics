@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure frontend application for creating customizable spinning wheel games using user-uploaded photos. The project has completed Phase 1 (core infrastructure and data management) and Phase 2 (gallery management system) and is ready for Phase 3 implementation.
+This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure frontend application for creating customizable spinning wheel games using user-uploaded photos. The project has completed Phase 1 (core infrastructure and data management), Phase 2 (gallery management system), and Phase 3 (game configuration & core logic) and is ready for Phase 4 implementation.
 
 ## Architecture & Technical Stack
 
@@ -46,19 +46,21 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 ### Current State  
 - **Completed Phase 1**: Core Infrastructure & Data Management
 - **Completed Phase 2**: Gallery Management System  
+- **Completed Phase 3**: Game Configuration & Core Logic
 - **Files Implemented**: 
   - **Project Foundation**: `package.json`, `tsconfig.json`, `vite.config.ts`, `.eslintrc.cjs`, `src/vite-env.d.ts`
-  - **UI Structure**: `index.html` - Complete 3-screen layout with modals and responsive design
+  - **UI Structure**: `index.html` - Complete 3-screen layout with modals, play screen, and responsive design
   - **Application Core**: 
     - `src/main.ts` - Entry point with service worker registration and global app instance
-    - `src/app.ts` - Complete App class with gallery management, photo upload, category management
+    - `src/app.ts` - Complete App class with gallery management, photo upload, category management, and play functionality
     - `src/types/index.ts` - Complete TypeScript data models and interfaces
-    - `src/style.css` - Comprehensive CSS with gallery management styles and mobile-first design
+    - `src/style.css` - Comprehensive CSS with gallery management and play screen styles, mobile-first design
   - **Data Layer**: 
     - `src/lib/storage.ts` - Complete StorageManager with LocalStorage + IndexedDB
+    - `src/lib/wheel.ts` - Complete WheelEngine with weighted random selection and session management
     - Gallery persistence, photo blob storage, error handling, and data validation
   - **PWA Features**: Automated via vite-plugin-pwa (manifest, service worker, offline support)
-- **Next Phase**: Game Configuration & Core Logic (Weighted random algorithms, Play session management)
+- **Next Phase**: Spinning Wheel UI & Animation (Canvas rendering, 60fps animations)
 
 ### Privacy & Storage Requirements
 - All user data must remain client-side (no server uploads)
@@ -74,8 +76,8 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 ## Development Notes
 
 ### Implementation Phases
-1. **Phase 1-2**: Core infrastructure and data management
-2. **Phase 3**: Game logic and configuration  
+1. **Phase 1-2**: Core infrastructure and data management (✅ Complete)
+2. **Phase 3**: Game logic and configuration (✅ Complete)  
 3. **Phase 4**: Spinning wheel and animations
 4. **Phase 5**: PWA features and polish
 
@@ -109,15 +111,12 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
   - `npm run type-check` - Run TypeScript type checking
 
 ### Next Implementation Priority
-- **Phase 3 - Game Configuration & Core Logic**: 
-  - `src/lib/wheel.ts` - Weighted random selection algorithms
-  - Play session management for consume mode
-  - Game state management and session tracking
-  - Navigation between gallery management and play screens
-- **Phase 4 - Wheel & Animation**: 
+- **Phase 4 - Spinning Wheel UI & Animation**: 
   - `src/lib/animation.ts` - 60fps canvas-based wheel rendering
-  - Dynamic segment generation and smooth spinning animation
-  - Physics-based deceleration and visual feedback
+  - Dynamic segment generation based on photos and categories
+  - Smooth spinning animation with physics-based deceleration
+  - Visual feedback and winning selection animation
+  - Integration with existing WheelEngine for seamless gameplay
 
 ### Current Capabilities
 - ✅ Gallery creation with name validation and duplicate prevention
@@ -127,6 +126,11 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 - ✅ Complete gallery management system with CRUD operations
 - ✅ Photo upload, categorization, and chance value management
 - ✅ Category creation with color picker and visual organization
-- ✅ Gallery settings with spin mode configuration
+- ✅ Gallery settings with spin mode configuration (Static vs Consume)
 - ✅ Tabbed interface with responsive mobile-first design
 - ✅ Error handling and user feedback throughout the application
+- ✅ Complete game logic with weighted random selection algorithms
+- ✅ Play session management with consume mode chance tracking
+- ✅ Interactive play screen with spin functionality and result display
+- ✅ Session statistics and reset functionality
+- ✅ Navigation flow between gallery management and gameplay modes
