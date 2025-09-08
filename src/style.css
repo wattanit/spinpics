@@ -486,3 +486,251 @@ body {
     flex-shrink: 0;
   }
 }
+
+/* Gallery Management Styles */
+
+/* Photo Grid and Items */
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.photo-item {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.3s ease;
+}
+
+.photo-item:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.photo-preview {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-controls {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.photo-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.photo-info label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.chance-input {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--border-radius) / 2);
+  font-size: 0.875rem;
+}
+
+.category-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--border-radius) / 2);
+  font-size: 0.875rem;
+  background: var(--background);
+}
+
+/* Category Management */
+.categories-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+.category-color {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+
+.category-info {
+  flex: 1;
+}
+
+.category-info h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.category-info p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.category-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Settings Tab */
+.settings-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.form-color {
+  width: 60px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--border-radius) / 2);
+  cursor: pointer;
+}
+
+.settings-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+/* Upload Area Enhancement */
+.upload-area {
+  margin-bottom: var(--spacing-lg);
+}
+
+#upload-btn {
+  width: 100%;
+  padding: var(--spacing-lg);
+  border: 2px dashed var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#upload-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(33, 150, 243, 0.05);
+}
+
+/* Button size variants */
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+.btn-large {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Error and success states */
+.error {
+  color: var(--danger-color);
+  padding: var(--spacing-md);
+  background: rgba(244, 67, 54, 0.1);
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--primary-color);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive enhancements for mobile */
+@media (max-width: 768px) {
+  .photo-item {
+    min-width: 0;
+  }
+  
+  .category-item {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .category-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .settings-actions {
+    flex-direction: column;
+  }
+  
+  .settings-actions .btn {
+    width: 100%;
+  }
+}

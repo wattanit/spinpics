@@ -52,6 +52,47 @@ export class App {
       this.hideModal('new-gallery-modal');
     });
 
+    // Category modal controls
+    document.getElementById('new-category-btn')?.addEventListener('click', () => {
+      this.showModal('new-category-modal');
+    });
+
+    document.getElementById('create-new-category')?.addEventListener('click', () => {
+      this.createCategory();
+    });
+
+    document.getElementById('cancel-new-category')?.addEventListener('click', () => {
+      this.hideModal('new-category-modal');
+    });
+
+    // Gallery tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.switchTab((e.target as HTMLElement).dataset.tab || '');
+      });
+    });
+
+    // Photo upload
+    document.getElementById('upload-btn')?.addEventListener('click', () => {
+      document.getElementById('photo-upload')?.click();
+    });
+
+    document.getElementById('photo-upload')?.addEventListener('change', (e) => {
+      const input = e.target as HTMLInputElement;
+      if (input.files) {
+        this.handlePhotoUpload(Array.from(input.files));
+      }
+    });
+
+    // Gallery settings
+    document.getElementById('save-settings')?.addEventListener('click', () => {
+      this.saveGallerySettings();
+    });
+
+    document.getElementById('delete-gallery')?.addEventListener('click', () => {
+      this.deleteCurrentGallery();
+    });
+
     // Modal close buttons
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -102,8 +143,8 @@ export class App {
           <p>${gallery.photos.length} photos • ${gallery.categories.length} categories</p>
           <p>Mode: ${gallery.spinMode}</p>
           <div class="gallery-actions">
-            <button class="btn btn-outline">Edit</button>
-            <button class="btn btn-primary">Play</button>
+            <button class="btn btn-outline" onclick="app.editGallery('${gallery.galleryId}')">Edit</button>
+            <button class="btn btn-primary" onclick="app.playGallery('${gallery.galleryId}')">Play</button>
           </div>
         </div>
       `).join('');
@@ -213,5 +254,434 @@ export class App {
   private showError(message: string): void {
     // Simple error display - could be enhanced with a toast system later
     alert(message);
+  }
+
+  // Gallery Management Methods
+  async editGallery(galleryId: string): Promise<void> {
+    const gallery = this.state.galleries.find(g => g.galleryId === galleryId);
+    if (!gallery) {
+      this.showError('Gallery not found');
+      return;
+    }
+
+    this.state.currentGallery = gallery;
+    this.showScreen('gallery');
+    this.populateGalleryEditor(gallery);
+  }
+
+  async playGallery(galleryId: string): Promise<void> {
+    const gallery = this.state.galleries.find(g => g.galleryId === galleryId);
+    if (!gallery) {
+      this.showError('Gallery not found');
+      return;
+    }
+
+    if (gallery.photos.length === 0) {
+      this.showError('This gallery has no photos to spin!');
+      return;
+    }
+
+    this.state.currentGallery = gallery;
+    this.showScreen('play');
+    // TODO: Initialize wheel and game logic
+  }
+
+  private populateGalleryEditor(gallery: Gallery): void {
+    // Populate gallery name in settings
+    const nameInput = document.getElementById('gallery-name-input') as HTMLInputElement;
+    if (nameInput) nameInput.value = gallery.name;
+
+    // Populate spin mode
+    const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
+    if (spinModeSelect) spinModeSelect.value = gallery.spinMode;
+
+    // Render photos, categories, and set default tab
+    this.renderPhotos();
+    this.renderCategories();
+    this.switchTab('photos');
+  }
+
+  private switchTab(tabName: string): void {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`)?.classList.add('active');
+  }
+
+  private renderPhotos(): void {
+    const container = document.getElementById('photos-grid');
+    if (!container || !this.state.currentGallery) return;
+
+    if (this.state.currentGallery.photos.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No photos in this gallery yet.</p>
+        </div>
+      `;
+    } else {
+      // We'll render photos from IndexedDB
+      this.renderPhotosFromStorage();
+    }
+  }
+
+  private async renderPhotosFromStorage(): Promise<void> {
+    const container = document.getElementById('photos-grid');
+    if (!container || !this.state.currentGallery) return;
+
+    try {
+      const photosHtml = await Promise.all(
+        this.state.currentGallery.photos.map(async photo => {
+          const blob = await storage.getPhoto(photo.photoId);
+          if (!blob) return '';
+
+          const imageUrl = URL.createObjectURL(blob);
+          const category = this.state.currentGallery!.categories.find(c => c.categoryId === photo.categoryId);
+          
+          return `
+            <div class="photo-item" data-photo-id="${photo.photoId}">
+              <div class="photo-preview" style="background-color: ${category?.color || '#ccc'};">
+                <img src="${imageUrl}" alt="Photo" loading="lazy">
+              </div>
+              <div class="photo-controls">
+                <div class="photo-info">
+                  <label>Chance:</label>
+                  <input type="number" class="chance-input" value="${photo.chance}" min="0" 
+                         onchange="app.updatePhotoChance('${photo.photoId}', this.value)">
+                </div>
+                <div class="photo-info">
+                  <label>Category:</label>
+                  <select class="category-select" onchange="app.updatePhotoCategory('${photo.photoId}', this.value)">
+                    <option value="">Uncategorized</option>
+                    ${this.state.currentGallery!.categories.map(cat => `
+                      <option value="${cat.categoryId}" ${photo.categoryId === cat.categoryId ? 'selected' : ''}>
+                        ${cat.name}
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="app.deletePhoto('${photo.photoId}')">Delete</button>
+              </div>
+            </div>
+          `;
+        })
+      );
+
+      container.innerHTML = photosHtml.join('');
+    } catch (error) {
+      console.error('Failed to render photos:', error);
+      container.innerHTML = '<div class="error">Failed to load photos</div>';
+    }
+  }
+
+  private async handlePhotoUpload(files: File[]): Promise<void> {
+    if (!this.state.currentGallery) {
+      this.showError('No gallery selected');
+      return;
+    }
+
+    try {
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          console.warn('Skipping non-image file:', file.name);
+          continue;
+        }
+
+        const photoId = this.generateId();
+        await storage.savePhoto(photoId, file);
+
+        const newPhoto = {
+          photoId,
+          chance: 1,
+          categoryId: ''
+        };
+
+        this.state.currentGallery.photos.push(newPhoto);
+      }
+
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update the gallery in the state
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.renderPhotos();
+    } catch (error) {
+      console.error('Failed to upload photos:', error);
+      this.showError('Failed to upload photos');
+    }
+  }
+
+  async updatePhotoChance(photoId: string, chance: string): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    const photo = this.state.currentGallery.photos.find(p => p.photoId === photoId);
+    if (!photo) return;
+
+    const numChance = Math.max(0, parseInt(chance) || 0);
+    photo.chance = numChance;
+
+    try {
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+    } catch (error) {
+      console.error('Failed to update photo chance:', error);
+      this.showError('Failed to update photo chance');
+    }
+  }
+
+  async updatePhotoCategory(photoId: string, categoryId: string): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    const photo = this.state.currentGallery.photos.find(p => p.photoId === photoId);
+    if (!photo) return;
+
+    photo.categoryId = categoryId;
+
+    try {
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array  
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      // Re-render to update visual category color
+      this.renderPhotos();
+    } catch (error) {
+      console.error('Failed to update photo category:', error);
+      this.showError('Failed to update photo category');
+    }
+  }
+
+  async deletePhoto(photoId: string): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    if (!confirm('Are you sure you want to delete this photo?')) return;
+
+    try {
+      await storage.deletePhoto(photoId);
+      
+      this.state.currentGallery.photos = this.state.currentGallery.photos.filter(p => p.photoId !== photoId);
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.renderPhotos();
+    } catch (error) {
+      console.error('Failed to delete photo:', error);
+      this.showError('Failed to delete photo');
+    }
+  }
+
+  private renderCategories(): void {
+    const container = document.getElementById('categories-list');
+    if (!container || !this.state.currentGallery) return;
+
+    if (this.state.currentGallery.categories.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>No categories created yet.</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = this.state.currentGallery.categories.map(category => `
+        <div class="category-item" data-category-id="${category.categoryId}">
+          <div class="category-color" style="background-color: ${category.color};"></div>
+          <div class="category-info">
+            <h4>${category.name}</h4>
+            <p>Color: ${category.color}</p>
+          </div>
+          <div class="category-actions">
+            <button class="btn btn-outline btn-sm" onclick="app.editCategory('${category.categoryId}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="app.deleteCategory('${category.categoryId}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  private async createCategory(): Promise<void> {
+    const nameInput = document.getElementById('new-category-name') as HTMLInputElement;
+    const colorInput = document.getElementById('new-category-color') as HTMLInputElement;
+    
+    const name = nameInput?.value?.trim();
+    const color = colorInput?.value;
+
+    if (!name) {
+      this.showError('Please enter a category name');
+      return;
+    }
+
+    if (!this.state.currentGallery) {
+      this.showError('No gallery selected');
+      return;
+    }
+
+    // Check for duplicate names
+    const existingCategory = this.state.currentGallery.categories.find(c => 
+      c.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existingCategory) {
+      this.showError('A category with this name already exists');
+      return;
+    }
+
+    try {
+      const newCategory = {
+        categoryId: this.generateId(),
+        name,
+        color: color || '#2196F3'
+      };
+
+      this.state.currentGallery.categories.push(newCategory);
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.renderCategories();
+      this.renderPhotos(); // Re-render photos to update category options
+      this.hideModal('new-category-modal');
+      
+      // Clear form
+      nameInput.value = '';
+      colorInput.value = '#2196F3';
+
+    } catch (error) {
+      console.error('Failed to create category:', error);
+      this.showError('Failed to create category');
+    }
+  }
+
+  async editCategory(_categoryId: string): Promise<void> {
+    // TODO: Implement edit category modal/inline editing
+    this.showError('Edit category feature coming soon!');
+  }
+
+  async deleteCategory(categoryId: string): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    if (!confirm('Are you sure you want to delete this category? Photos will become uncategorized.')) return;
+
+    try {
+      // Remove category
+      this.state.currentGallery.categories = this.state.currentGallery.categories.filter(c => c.categoryId !== categoryId);
+      
+      // Update photos that were in this category
+      this.state.currentGallery.photos.forEach(photo => {
+        if (photo.categoryId === categoryId) {
+          photo.categoryId = '';
+        }
+      });
+
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.renderCategories();
+      this.renderPhotos(); // Re-render photos to update category options
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      this.showError('Failed to delete category');
+    }
+  }
+
+  private async saveGallerySettings(): Promise<void> {
+    if (!this.state.currentGallery) {
+      this.showError('No gallery selected');
+      return;
+    }
+
+    const nameInput = document.getElementById('gallery-name-input') as HTMLInputElement;
+    const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
+    
+    const name = nameInput?.value?.trim();
+    const spinMode = spinModeSelect?.value as 'static' | 'consume';
+
+    if (!name) {
+      this.showError('Please enter a gallery name');
+      return;
+    }
+
+    // Check for duplicate names (excluding current gallery)
+    const existingGallery = this.state.galleries.find(g => 
+      g.galleryId !== this.state.currentGallery!.galleryId && 
+      g.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existingGallery) {
+      this.showError('A gallery with this name already exists');
+      return;
+    }
+
+    try {
+      this.state.currentGallery.name = name;
+      this.state.currentGallery.spinMode = spinMode;
+
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.showError('Settings saved successfully!'); // Using showError for now as a notification
+    } catch (error) {
+      console.error('Failed to save gallery settings:', error);
+      this.showError('Failed to save settings');
+    }
+  }
+
+  private async deleteCurrentGallery(): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    if (!confirm(`Are you sure you want to delete "${this.state.currentGallery.name}"? This action cannot be undone.`)) return;
+
+    try {
+      // Delete all photos from IndexedDB
+      for (const photo of this.state.currentGallery.photos) {
+        await storage.deletePhoto(photo.photoId);
+      }
+
+      // Delete gallery from storage
+      await storage.deleteGallery(this.state.currentGallery.galleryId);
+      
+      // Remove from state
+      this.state.galleries = this.state.galleries.filter(g => g.galleryId !== this.state.currentGallery!.galleryId);
+      this.state.currentGallery = null;
+
+      // Navigate back to home
+      this.showScreen('home');
+      this.renderGalleries();
+    } catch (error) {
+      console.error('Failed to delete gallery:', error);
+      this.showError('Failed to delete gallery');
+    }
   }
 }
