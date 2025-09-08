@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Create customizable spinning wheel games with your photos">
+    <meta name="theme-color" content="#2196F3">
+    
+    <title>Photo Wheel Spinner</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons for various devices -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/icons/icon-512x512.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/gallery.css">
+    <link rel="stylesheet" href="css/wheel.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Main App Container -->
+    <div id="app" class="app-container">
+        <!-- Navigation Header -->
+        <header class="app-header">
+            <h1 class="app-title">Photo Wheel Spinner</h1>
+            <nav class="app-nav">
+                <button id="home-btn" class="nav-btn active">Home</button>
+                <button id="create-btn" class="nav-btn">Create</button>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <!-- Home Screen: Gallery List -->
+            <section id="home-screen" class="screen active">
+                <div class="screen-header">
+                    <h2>Your Galleries</h2>
+                    <button id="new-gallery-btn" class="btn btn-primary">+ New Gallery</button>
+                </div>
+                <div id="galleries-container" class="galleries-grid">
+                    <div class="empty-state">
+                        <p>No galleries yet. Create your first spinning wheel!</p>
+                        <button class="btn btn-secondary">Get Started</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gallery Management Screen -->
+            <section id="gallery-screen" class="screen">
+                <div class="screen-header">
+                    <button id="back-to-home" class="btn btn-text">← Back</button>
+                    <h2 id="gallery-title">Gallery Name</h2>
+                    <button id="play-gallery" class="btn btn-primary">Play</button>
+                </div>
+                
+                <!-- Gallery Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="photos">Photos</button>
+                    <button class="tab-btn" data-tab="categories">Categories</button>
+                    <button class="tab-btn" data-tab="settings">Settings</button>
+                </div>
+
+                <!-- Photos Tab -->
+                <div id="photos-tab" class="tab-content active">
+                    <div class="upload-area">
+                        <input type="file" id="photo-upload" multiple accept="image/*" hidden>
+                        <button id="upload-btn" class="btn btn-outline">+ Add Photos</button>
+                    </div>
+                    <div id="photos-grid" class="photos-grid"></div>
+                </div>
+
+                <!-- Categories Tab -->
+                <div id="categories-tab" class="tab-content">
+                    <div class="categories-header">
+                        <button id="new-category-btn" class="btn btn-secondary">+ New Category</button>
+                    </div>
+                    <div id="categories-list" class="categories-list"></div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content">
+                    <div class="settings-group">
+                        <label for="gallery-name-input">Gallery Name</label>
+                        <input type="text" id="gallery-name-input" class="form-input">
+                    </div>
+                    <div class="settings-group">
+                        <label for="spin-mode-select">Spin Mode</label>
+                        <select id="spin-mode-select" class="form-select">
+                            <option value="static">Static - Chances never change</option>
+                            <option value="consume">Consume - Winning chances reduce</option>
+                        </select>
+                    </div>
+                    <div class="settings-actions">
+                        <button id="save-settings" class="btn btn-primary">Save Changes</button>
+                        <button id="delete-gallery" class="btn btn-danger">Delete Gallery</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Game/Play Screen -->
+            <section id="play-screen" class="screen">
+                <div class="screen-header">
+                    <button id="back-to-gallery" class="btn btn-text">← Back</button>
+                    <h2 id="play-gallery-title">Playing: Gallery Name</h2>
+                    <button id="reset-session" class="btn btn-secondary" style="display: none;">Reset Session</button>
+                </div>
+
+                <div class="game-container">
+                    <!-- Spinning Wheel -->
+                    <div class="wheel-container">
+                        <canvas id="wheel-canvas" width="400" height="400"></canvas>
+                        <div class="wheel-pointer"></div>
+                    </div>
+
+                    <!-- Game Controls -->
+                    <div class="game-controls">
+                        <button id="spin-btn" class="btn btn-primary btn-large">SPIN!</button>
+                    </div>
+
+                    <!-- Result Display -->
+                    <div id="result-display" class="result-display" style="display: none;">
+                        <h3>Winner!</h3>
+                        <div id="winning-photo" class="winning-photo"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay">
+        <!-- New Gallery Modal -->
+        <div id="new-gallery-modal" class="modal">
+            <div class="modal-header">
+                <h3>Create New Gallery</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="new-gallery-name">Gallery Name</label>
+                <input type="text" id="new-gallery-name" class="form-input" placeholder="Enter gallery name">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-new-gallery" class="btn btn-text">Cancel</button>
+                <button id="create-new-gallery" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+
+        <!-- New Category Modal -->
+        <div id="new-category-modal" class="modal">
+            <div class="modal-header">
+                <h3>Create New Category</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="new-category-name">Category Name</label>
+                <input type="text" id="new-category-name" class="form-input" placeholder="e.g., Common, Rare">
+                <label for="new-category-color">Category Color</label>
+                <input type="color" id="new-category-color" class="form-color" value="#2196F3">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-new-category" class="btn btn-text">Cancel</button>
+                <button id="create-new-category" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/gallery.js"></script>
+    <script src="js/wheel.js"></script>
+    <script src="js/animation.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
