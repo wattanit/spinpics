@@ -1,4 +1,5 @@
 import type { AppState, Gallery } from './types';
+import { storage } from './lib/storage';
 
 export class App {
   private state: AppState = {
@@ -11,16 +12,25 @@ export class App {
   async initialize(): Promise<void> {
     console.log('🎯 Initializing Photo Wheel Spinner...');
     
-    // Set up event listeners
-    this.setupEventListeners();
-    
-    // Load initial data
-    await this.loadGalleries();
-    
-    // Set initial screen
-    this.showScreen('home');
-    
-    console.log('✅ App initialized successfully');
+    try {
+      // Initialize storage layer
+      await storage.initialize();
+      console.log('✅ Storage initialized');
+      
+      // Set up event listeners
+      this.setupEventListeners();
+      
+      // Load initial data
+      await this.loadGalleries();
+      
+      // Set initial screen
+      this.showScreen('home');
+      
+      console.log('✅ App initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize app:', error);
+      this.showError('Failed to initialize application. Please refresh the page.');
+    }
   }
 
   private setupEventListeners(): void {
@@ -62,11 +72,11 @@ export class App {
 
   private async loadGalleries(): Promise<void> {
     try {
-      // TODO: Load from storage
-      this.state.galleries = [];
+      this.state.galleries = await storage.getAllGalleries();
       this.renderGalleries();
     } catch (error) {
       console.error('Failed to load galleries:', error);
+      this.showError('Failed to load galleries');
     }
   }
 
@@ -100,29 +110,42 @@ export class App {
     }
   }
 
-  private createGallery(): void {
+  private async createGallery(): Promise<void> {
     const nameInput = document.getElementById('new-gallery-name') as HTMLInputElement;
     const name = nameInput?.value?.trim();
 
     if (!name) {
-      alert('Please enter a gallery name');
+      this.showError('Please enter a gallery name');
       return;
     }
 
-    const gallery: Gallery = {
-      galleryId: this.generateId(),
-      name,
-      spinMode: 'static',
-      categories: [],
-      photos: []
-    };
+    // Check for duplicate names
+    const existingGallery = this.state.galleries.find(g => g.name.toLowerCase() === name.toLowerCase());
+    if (existingGallery) {
+      this.showError('A gallery with this name already exists');
+      return;
+    }
 
-    this.state.galleries.push(gallery);
-    this.renderGalleries();
-    this.hideModal('new-gallery-modal');
-    nameInput.value = '';
+    try {
+      const gallery: Gallery = {
+        galleryId: this.generateId(),
+        name,
+        spinMode: 'static',
+        categories: [],
+        photos: []
+      };
 
-    console.log('Gallery created:', gallery);
+      await storage.saveGallery(gallery);
+      this.state.galleries.push(gallery);
+      this.renderGalleries();
+      this.hideModal('new-gallery-modal');
+      nameInput.value = '';
+
+      console.log('Gallery created:', gallery);
+    } catch (error) {
+      console.error('Failed to create gallery:', error);
+      this.showError('Failed to create gallery');
+    }
   }
 
   private showScreen(screenName: AppState['currentScreen']): void {
@@ -185,5 +208,10 @@ export class App {
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  private showError(message: string): void {
+    // Simple error display - could be enhanced with a toast system later
+    alert(message);
   }
 }
