@@ -1,0 +1,379 @@
+import type { WheelSegment, SpinAnimation } from '../types/index.js';
+
+export class WheelRenderer {
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private segments: WheelSegment[] = [];
+  private animation: SpinAnimation | null = null;
+  private animationFrameId: number | null = null;
+  private imageCache = new Map<string, HTMLImageElement>();
+  private winningSegmentId: string | null = null;
+  private highlightAnimation: number = 0;
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get 2D rendering context');
+    }
+    this.ctx = ctx;
+    this.setupCanvas();
+  }
+
+  private setupCanvas(): void {
+    // Set up high DPI rendering
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+    
+    // Ensure minimum canvas size
+    const width = Math.max(400, rect.width);
+    const height = Math.max(400, rect.height);
+    
+    this.canvas.width = width * dpr;
+    this.canvas.height = height * dpr;
+    
+    this.ctx.scale(dpr, dpr);
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+    
+    console.log(`Canvas setup: ${width}x${height} (DPR: ${dpr})`);
+  }
+
+  /**
+   * Updates wheel segments and redraws
+   */
+  async updateSegments(segments: WheelSegment[]): Promise<void> {
+    this.segments = segments;
+    // Skip image preloading since we're not displaying photos on wheel
+    this.draw();
+  }
+
+  /**
+   * Preloads all segment images for smooth animation
+   */
+  private async preloadImages(): Promise<void> {
+    const imagePromises = this.segments.map(async (segment) => {
+      if (this.imageCache.has(segment.photoId)) {
+        return; // Already cached
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          this.imageCache.set(segment.photoId, img);
+          resolve();
+        };
+        img.onerror = () => {
+          console.error('Failed to load image for segment:', segment.photoId);
+          resolve(); // Continue even if image fails
+        };
+        img.src = URL.createObjectURL(segment.photo);
+      });
+    });
+
+    await Promise.all(imagePromises);
+  }
+
+  /**
+   * Draws the wheel at the current rotation angle
+   */
+  private draw(currentAngle: number = 0): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const width = Math.max(400, rect.width);
+    const height = Math.max(400, rect.height);
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.max(150, Math.min(centerX, centerY) - 30); // Larger minimum radius
+
+    // Clear canvas
+    this.ctx.clearRect(0, 0, width, height);
+
+    // Draw segments
+    this.segments.forEach((segment) => {
+      const isWinning = segment.photoId === this.winningSegmentId;
+      this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning);
+    });
+
+    // Draw center circle
+    this.drawCenter(centerX, centerY);
+
+    // Draw outer border
+    this.drawBorder(centerX, centerY, radius);
+  }
+
+  /**
+   * Draws a single wheel segment
+   */
+  private drawSegment(
+    segment: WheelSegment,
+    centerX: number,
+    centerY: number,
+    radius: number,
+    rotation: number,
+    isWinning: boolean = false
+  ): void {
+    const startAngle = segment.startAngle + rotation;
+    const endAngle = segment.endAngle + rotation;
+
+    this.ctx.save();
+
+    // Create clipping path for segment
+    this.ctx.beginPath();
+    this.ctx.moveTo(centerX, centerY);
+    this.ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    this.ctx.closePath();
+    this.ctx.clip();
+
+    // Fill background with category color (with highlight effect for winner)
+    if (isWinning) {
+      const highlightIntensity = Math.sin(this.highlightAnimation * 0.1) * 0.3 + 0.7;
+      this.ctx.fillStyle = this.lightenColor(segment.category.color, highlightIntensity);
+    } else {
+      this.ctx.fillStyle = segment.category.color;
+    }
+    this.ctx.fill();
+
+    // Don't draw photos on the wheel - keep segments clean with just colors
+
+    // Draw segment border (thicker for winner)
+    this.ctx.strokeStyle = isWinning ? '#ffd700' : '#ffffff';
+    this.ctx.lineWidth = isWinning ? 4 : 2;
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  /**
+   * Draws photo image within segment bounds
+   */
+  private drawSegmentImage(
+    image: HTMLImageElement,
+    segment: WheelSegment,
+    centerX: number,
+    centerY: number,
+    radius: number,
+    rotation: number,
+    isWinning: boolean = false
+  ): void {
+    const midAngle = (segment.startAngle + segment.endAngle) / 2 + rotation;
+    const imageRadius = radius * 0.7; // Image positioned at 70% of radius
+    
+    const imageX = centerX + Math.cos(midAngle) * imageRadius;
+    const imageY = centerY + Math.sin(midAngle) * imageRadius;
+    
+    const baseImageSize = Math.min(60, radius * segment.normalizedChance * 2);
+    const imageSize = isWinning ? baseImageSize * 1.2 : baseImageSize;
+    
+    this.ctx.save();
+    this.ctx.translate(imageX, imageY);
+    this.ctx.rotate(midAngle + Math.PI / 2); // Rotate image to face outward
+    
+    // Draw image with circular clipping
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, imageSize / 2, 0, Math.PI * 2);
+    this.ctx.clip();
+    
+    this.ctx.drawImage(
+      image,
+      -imageSize / 2,
+      -imageSize / 2,
+      imageSize,
+      imageSize
+    );
+    
+    this.ctx.restore();
+  }
+
+  /**
+   * Draws center circle
+   */
+  private drawCenter(centerX: number, centerY: number): void {
+    this.ctx.save();
+    
+    // Center circle background
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#333333';
+    this.ctx.lineWidth = 3;
+    this.ctx.stroke();
+    
+    this.ctx.restore();
+  }
+
+  /**
+   * Draws outer border
+   */
+  private drawBorder(centerX: number, centerY: number, radius: number): void {
+    this.ctx.save();
+    
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    this.ctx.strokeStyle = '#333333';
+    this.ctx.lineWidth = 4;
+    this.ctx.stroke();
+    
+    this.ctx.restore();
+  }
+
+  /**
+   * Starts spinning animation
+   */
+  startSpin(targetAngle: number, duration: number = 3000): Promise<void> {
+    return new Promise((resolve) => {
+      // Stop any existing animation
+      this.stopSpin();
+
+      // Calculate spin parameters
+      const startAngle = this.animation?.currentAngle || 0;
+      const totalRotation = targetAngle + Math.PI * 6; // Add 3 full rotations for effect
+      
+      this.animation = {
+        isSpinning: true,
+        currentAngle: startAngle,
+        targetAngle: totalRotation,
+        velocity: 0,
+        startTime: performance.now(),
+        duration
+      };
+
+      // Start animation loop
+      const animate = (currentTime: number) => {
+        if (!this.animation || !this.animation.isSpinning) {
+          resolve();
+          return;
+        }
+
+        const elapsed = currentTime - this.animation.startTime;
+        const progress = Math.min(elapsed / this.animation.duration, 1);
+        
+        // Easing function for realistic deceleration
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        this.animation.currentAngle = startAngle + (totalRotation - startAngle) * easeOut;
+        
+        this.draw(this.animation.currentAngle);
+        
+        if (progress >= 1) {
+          this.animation.isSpinning = false;
+          this.animation.currentAngle = totalRotation;
+          resolve();
+        } else {
+          this.animationFrameId = requestAnimationFrame(animate);
+        }
+      };
+
+      this.animationFrameId = requestAnimationFrame(animate);
+    });
+  }
+
+  /**
+   * Stops current animation
+   */
+  stopSpin(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    
+    if (this.animation) {
+      this.animation.isSpinning = false;
+    }
+  }
+
+  /**
+   * Gets current rotation angle
+   */
+  getCurrentAngle(): number {
+    return this.animation?.currentAngle || 0;
+  }
+
+  /**
+   * Checks if wheel is currently spinning
+   */
+  isSpinning(): boolean {
+    return this.animation?.isSpinning || false;
+  }
+
+  /**
+   * Cleanup method
+   */
+  destroy(): void {
+    this.stopSpin();
+    
+    // Clean up image URLs
+    this.imageCache.forEach((img) => {
+      if (img.src.startsWith('blob:')) {
+        URL.revokeObjectURL(img.src);
+      }
+    });
+    this.imageCache.clear();
+  }
+
+  /**
+   * Highlights winning segment with animation
+   */
+  highlightWinner(winningPhotoId: string): void {
+    this.winningSegmentId = winningPhotoId;
+    this.startHighlightAnimation();
+  }
+
+  /**
+   * Clears winner highlight
+   */
+  clearWinnerHighlight(): void {
+    this.winningSegmentId = null;
+    this.stopHighlightAnimation();
+  }
+
+  /**
+   * Starts highlight animation loop
+   */
+  private startHighlightAnimation(): void {
+    const animate = () => {
+      if (this.winningSegmentId) {
+        this.highlightAnimation++;
+        this.draw(this.getCurrentAngle());
+        this.animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+    this.stopHighlightAnimation();
+    this.animationFrameId = requestAnimationFrame(animate);
+  }
+
+  /**
+   * Stops highlight animation
+   */
+  private stopHighlightAnimation(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  /**
+   * Lightens a hex color by a given factor
+   */
+  private lightenColor(hex: string, factor: number): string {
+    const color = hex.replace('#', '');
+    const num = parseInt(color, 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    
+    const newR = Math.min(255, Math.floor(r + (255 - r) * factor));
+    const newG = Math.min(255, Math.floor(g + (255 - g) * factor));
+    const newB = Math.min(255, Math.floor(b + (255 - b) * factor));
+    
+    return `rgb(${newR}, ${newG}, ${newB})`;
+  }
+
+  /**
+   * Resize canvas (call when window resizes)
+   */
+  resize(): void {
+    this.setupCanvas();
+    this.draw(this.getCurrentAngle());
+  }
+}

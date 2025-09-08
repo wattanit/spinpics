@@ -1,6 +1,7 @@
 import type { AppState, Gallery } from './types';
 import { storage } from './lib/storage';
 import { WheelEngine } from './lib/wheel';
+import { WheelRenderer } from './lib/animation';
 
 export class App {
   private state: AppState = {
@@ -10,6 +11,7 @@ export class App {
     galleries: []
   };
   private wheelEngine!: WheelEngine;
+  private wheelRenderer!: WheelRenderer;
 
   async initialize(): Promise<void> {
     console.log('🎯 Initializing Photo Wheel Spinner...');
@@ -23,8 +25,22 @@ export class App {
       this.wheelEngine = new WheelEngine(storage);
       console.log('✅ Wheel engine initialized');
       
+      // Initialize wheel renderer
+      const canvas = document.getElementById('wheel-canvas') as HTMLCanvasElement;
+      if (canvas) {
+        this.wheelRenderer = new WheelRenderer(canvas);
+        console.log('✅ Wheel renderer initialized');
+      }
+      
       // Set up event listeners
       this.setupEventListeners();
+      
+      // Handle window resize for canvas
+      window.addEventListener('resize', () => {
+        if (this.wheelRenderer) {
+          this.wheelRenderer.resize();
+        }
+      });
       
       // Load initial data
       await this.loadGalleries();
@@ -733,8 +749,8 @@ export class App {
       // Update session stats
       this.updateSessionStats();
 
-      // Initialize wheel visualization (placeholder for Phase 4)
-      this.renderWheelPlaceholder();
+      // Initialize wheel visualization
+      await this.renderWheel();
 
       // Clear any previous results
       this.clearPlayResults();
@@ -775,24 +791,27 @@ export class App {
     }
   }
 
-  private renderWheelPlaceholder(): void {
-    // Placeholder for Phase 4 - actual wheel rendering
-    const wheelContainer = document.getElementById('wheel-container');
-    if (wheelContainer && this.state.currentGallery && this.state.playSession) {
-      const eligiblePhotos = this.state.currentGallery.photos.filter(photo => {
-        const currentChance = this.state.playSession!.currentChances.get(photo.photoId) || 0;
-        return currentChance > 0;
-      });
+  private async renderWheel(): Promise<void> {
+    if (!this.state.currentGallery || !this.state.playSession || !this.wheelRenderer) {
+      return;
+    }
 
-      wheelContainer.innerHTML = `
-        <div class="wheel-placeholder">
-          <div class="wheel-center">
-            <h3>Wheel Ready</h3>
-            <p>${eligiblePhotos.length} photos eligible</p>
-            <p>Click "Spin" to play!</p>
-          </div>
-        </div>
-      `;
+    try {
+      // Generate wheel segments
+      const segments = await this.wheelEngine.generateWheelSegments(
+        this.state.playSession,
+        this.state.currentGallery
+      );
+
+      // Update wheel renderer with new segments
+      await this.wheelRenderer.updateSegments(segments);
+      
+      console.log(`Wheel rendered with ${segments.length} segments`);
+    } catch (error) {
+      console.error('Failed to render wheel:', error);
+      console.error('Current gallery:', this.state.currentGallery);
+      console.error('Play session:', this.state.playSession);
+      this.showError(`Failed to render wheel: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -801,6 +820,11 @@ export class App {
     if (resultContainer) {
       resultContainer.innerHTML = '';
       resultContainer.style.display = 'none';
+    }
+    
+    // Clear winner highlight
+    if (this.wheelRenderer) {
+      this.wheelRenderer.clearWinnerHighlight();
     }
   }
 
@@ -818,15 +842,42 @@ export class App {
         spinBtn.textContent = 'Spinning...';
       }
 
-      // Perform the spin
-      const winningPhotoId = this.wheelEngine.spinWheel(this.state.playSession, this.state.currentGallery.photos);
-      
-      if (!winningPhotoId) {
+      // Generate wheel segments for current session
+      const segments = await this.wheelEngine.generateWheelSegments(
+        this.state.playSession,
+        this.state.currentGallery
+      );
+
+      if (segments.length === 0) {
         this.showError('No eligible photos to spin! All chances may be consumed.');
         return;
       }
 
-      // Find winning photo and category
+      // Perform the weighted selection to determine target
+      const winningPhotoId = this.wheelEngine.spinWheel(this.state.playSession, this.state.currentGallery.photos);
+      
+      if (!winningPhotoId) {
+        this.showError('Error during spin calculation');
+        return;
+      }
+
+      // Find winning segment for animation targeting
+      const winningSegment = segments.find(s => s.photoId === winningPhotoId);
+      if (!winningSegment) {
+        this.showError('Error finding winning segment');
+        return;
+      }
+
+      // Calculate target angle (center of winning segment)
+      const targetAngle = (winningSegment.startAngle + winningSegment.endAngle) / 2;
+
+      // Perform wheel spin animation
+      await this.wheelRenderer.startSpin(targetAngle, 3000);
+
+      // Highlight the winning segment
+      this.wheelRenderer.highlightWinner(winningPhotoId);
+
+      // Find winning photo and category for display
       const winningPhoto = this.state.currentGallery.photos.find(p => p.photoId === winningPhotoId);
       const winningCategory = this.state.currentGallery.categories.find(c => c.categoryId === winningPhoto?.categoryId);
 
@@ -835,17 +886,15 @@ export class App {
         return;
       }
 
-      // Simulate wheel spin animation (placeholder for Phase 4)
-      await this.simulateWheelAnimation();
-
       // Update session state for consume mode
       this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningPhotoId);
 
       // Display result
       await this.displaySpinResult(winningPhoto, winningCategory);
 
-      // Update session stats
+      // Update session stats and re-render wheel for consume mode
       this.updateSessionStats();
+      await this.renderWheel();
 
     } catch (error) {
       console.error('Error during spin:', error);
@@ -860,12 +909,6 @@ export class App {
     }
   }
 
-  private async simulateWheelAnimation(): Promise<void> {
-    // Placeholder animation for Phase 4 - just a simple delay
-    return new Promise(resolve => {
-      setTimeout(resolve, 1500); // 1.5 second "animation"
-    });
-  }
 
   private async displaySpinResult(winningPhoto: any, winningCategory: any): Promise<void> {
     const resultContainer = document.getElementById('spin-result');
@@ -910,7 +953,7 @@ export class App {
     }
   }
 
-  private resetSession(): void {
+  private async resetSession(): Promise<void> {
     if (!this.state.playSession || !this.state.currentGallery) {
       this.showError('No active session to reset');
       return;
@@ -926,7 +969,7 @@ export class App {
     // Update UI
     this.updateSessionStats();
     this.clearPlayResults();
-    this.renderWheelPlaceholder();
+    await this.renderWheel();
     
     console.log('Session reset completed');
   }

@@ -119,50 +119,60 @@ export class WheelEngine {
   async generateWheelSegments(session: PlaySession, gallery: Gallery): Promise<WheelSegment[]> {
     const segments: WheelSegment[] = [];
     
-    // Filter photos with current chances > 0
-    const eligiblePhotos = gallery.photos.filter(photo => {
+    // Create individual segments for each chance instance
+    const individualSegments: Array<{photoId: string, category: any, photo: Blob}> = [];
+    
+    // Generate individual segments for each photo's chances
+    for (const photo of gallery.photos) {
       const currentChance = session.currentChances.get(photo.photoId) || 0;
-      return currentChance > 0;
-    });
-    
-    if (eligiblePhotos.length === 0) {
-      return segments; // Empty wheel
-    }
-    
-    // Calculate total weight for normalization
-    const totalWeight = eligiblePhotos.reduce((sum, photo) => {
-      return sum + (session.currentChances.get(photo.photoId) || 0);
-    }, 0);
-    
-    if (totalWeight <= 0) {
-      return segments; // No positive weights
-    }
-    
-    // Generate segments with angles
-    let currentAngle = 0;
-    
-    for (const photo of eligiblePhotos) {
-      const currentChance = session.currentChances.get(photo.photoId) || 0;
-      const normalizedChance = currentChance / totalWeight;
-      const segmentAngle = normalizedChance * 2 * Math.PI; // Full circle in radians
+      if (currentChance <= 0) continue;
       
       // Find the photo's category
-      const category = gallery.categories.find(c => c.categoryId === photo.categoryId);
+      const category = gallery.categories.find(c => c.categoryId === photo.categoryId) || {
+        categoryId: 'uncategorized',
+        name: 'Uncategorized', 
+        color: '#cccccc'
+      };
       
       // Load photo blob
       const photoBlob = await this.storage.getPhoto(photo.photoId);
+      if (!photoBlob) {
+        console.warn(`Failed to load photo blob for photoId: ${photo.photoId}`);
+        continue;
+      }
       
-      if (photoBlob && category) {
-        segments.push({
+      // Create one segment for each chance
+      for (let i = 0; i < currentChance; i++) {
+        individualSegments.push({
           photoId: photo.photoId,
-          photo: photoBlob,
           category,
-          chance: currentChance,
-          startAngle: currentAngle,
-          endAngle: currentAngle + segmentAngle,
-          normalizedChance
+          photo: photoBlob
         });
       }
+    }
+    
+    if (individualSegments.length === 0) {
+      return segments; // Empty wheel
+    }
+    
+    // Randomize the order of all segments
+    const shuffledSegments = [...individualSegments].sort(() => Math.random() - 0.5);
+    
+    // Calculate equal angles for each segment
+    const segmentAngle = (2 * Math.PI) / shuffledSegments.length;
+    let currentAngle = 0;
+    
+    // Create wheel segments with equal sizes
+    for (const segmentData of shuffledSegments) {
+      segments.push({
+        photoId: segmentData.photoId,
+        photo: segmentData.photo,
+        category: segmentData.category,
+        chance: 1, // Each segment represents 1 chance
+        startAngle: currentAngle,
+        endAngle: currentAngle + segmentAngle,
+        normalizedChance: 1 / shuffledSegments.length
+      });
       
       currentAngle += segmentAngle;
     }
@@ -197,9 +207,10 @@ export class WheelEngine {
       errors.push('Gallery must have at least one photo');
     }
     
-    if (!gallery.categories || gallery.categories.length === 0) {
-      errors.push('Gallery must have at least one category');
-    }
+    // Categories are optional - photos can be uncategorized
+    // if (!gallery.categories || gallery.categories.length === 0) {
+    //   errors.push('Gallery must have at least one category');
+    // }
     
     // Check if any photos have positive chances
     const hasPositiveChances = gallery.photos.some(photo => photo.chance > 0);
@@ -207,15 +218,15 @@ export class WheelEngine {
       errors.push('At least one photo must have a chance greater than 0');
     }
     
-    // Check if all photos have valid categories
-    const categoryIds = new Set(gallery.categories.map(c => c.categoryId));
-    const photosWithInvalidCategories = gallery.photos.filter(
-      photo => !categoryIds.has(photo.categoryId)
-    );
-    
-    if (photosWithInvalidCategories.length > 0) {
-      errors.push(`${photosWithInvalidCategories.length} photos have invalid category assignments`);
-    }
+    // Allow photos without categories - they'll use default category
+    // const categoryIds = new Set(gallery.categories.map(c => c.categoryId));
+    // const photosWithInvalidCategories = gallery.photos.filter(
+    //   photo => photo.categoryId && !categoryIds.has(photo.categoryId)
+    // );
+    // 
+    // if (photosWithInvalidCategories.length > 0) {
+    //   errors.push(`${photosWithInvalidCategories.length} photos have invalid category assignments`);
+    // }
     
     return {
       isValid: errors.length === 0,
