@@ -9,7 +9,7 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 ## Architecture & Technical Stack
 
 ### Core Architecture
-- **Pure Frontend PWA**: HTML5, CSS3, JavaScript (ES6+) only - no backend server
+- **Vite + TypeScript PWA**: Modern tooling with hot reload and type safety - no backend server
 - **Data Storage Strategy**: 
   - LocalStorage for metadata (galleries, categories, photo references, settings)
   - IndexedDB for photo blob storage (performance and size handling)
@@ -44,12 +44,16 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 ## Development Context
 
 ### Current State  
-- **Completed**: PWA foundation with HTML5 structure, manifest, and service worker
+- **Completed**: Vite + TypeScript setup with PWA foundation
 - **Files Implemented**: 
+  - Project setup: `package.json`, `tsconfig.json`, `vite.config.ts`, `.eslintrc.cjs`
   - `index.html` - Complete UI structure with 3 screens and modal dialogs
-  - `manifest.json` - PWA configuration for installability  
-  - `sw.js` - Service worker with offline caching strategy
-- **Next Phase**: Data storage layer (LocalStorage + IndexedDB implementation)
+  - `src/main.ts` - Application entry point with service worker registration
+  - `src/app.ts` - Main application class with basic navigation and modal handling
+  - `src/types/index.ts` - Complete TypeScript data models and interfaces
+  - `src/style.css` - Comprehensive CSS with responsive design and theming
+  - PWA configuration via vite-plugin-pwa (replaces manual manifest/service worker)
+- **Next Phase**: Data storage layer implementation (LocalStorage + IndexedDB)
 
 ### Privacy & Storage Requirements
 - All user data must remain client-side (no server uploads)
@@ -91,11 +95,18 @@ This is a Photo Wheel Spinner Progressive Web Application (PWA) - a pure fronten
 - **Manifest**: Installable PWA with icons, shortcuts, and screenshots
 - **Offline Support**: Static assets cached for offline functionality
 
-### Pending JavaScript Implementation
-All `.js` files referenced in HTML are not yet implemented:
-- `js/app.js` - Main application logic and screen management
-- `js/storage.js` - LocalStorage + IndexedDB data layer
-- `js/gallery.js` - Gallery CRUD operations
-- `js/wheel.js` - Spinning wheel logic and weighted selection
-- `js/animation.js` - 60fps wheel animations
-- `js/utils.js` - Utility functions and helpers
+### Development Environment
+- **Commands**:
+  - `npm run dev` - Start development server with hot reload
+  - `npm run build` - Build for production with PWA features  
+  - `npm run preview` - Preview production build
+  - `npm run lint` - Run ESLint for code quality
+  - `npm run type-check` - Run TypeScript type checking
+
+### Pending Implementation
+- `src/lib/storage.ts` - LocalStorage + IndexedDB data layer
+- `src/lib/gallery.ts` - Gallery CRUD operations  
+- `src/lib/wheel.ts` - Spinning wheel logic and weighted selection
+- `src/lib/animation.ts` - 60fps wheel animations
+- `src/components/` - UI component modules (optional, can use vanilla DOM)
+- Gallery management screens and photo upload functionality

@@ -111,9 +111,11 @@ Photo {
 ## Technical Specifications
 
 ### Technology Stack
-- **Frontend**: Pure HTML5, CSS3, JavaScript (ES6+)
+- **Frontend**: Vite + TypeScript + HTML5 + CSS3
 - **Storage**: LocalStorage + IndexedDB
 - **Architecture**: PWA with Service Worker
+- **Build Tool**: Vite with PWA plugin
+- **Development**: Hot reload, TypeScript checking, ESLint
 
 ### Browser Compatibility
 - Chrome, Firefox, Safari, Edge (latest versions)
@@ -174,5 +176,14 @@ Photo {
 ## Getting Started
 
 1. Clone the repository
-2. Open `index.html` in a modern browser or serve via local HTTP server
-3. The PWA can be installed on mobile devices and works offline once cached
+2. Install dependencies: `npm install`
+3. Start development server: `npm run dev`
+4. Build for production: `npm run build`
+5. Preview production build: `npm run preview`
+
+### Development Commands
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build for production with PWA features
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint for code quality
+- `npm run type-check` - Run TypeScript type checking
