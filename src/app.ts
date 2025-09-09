@@ -842,8 +842,14 @@ export class App {
       // Clear any previous winning animation
       this.wheelRenderer.clearWinnerHighlight();
 
-      // Get current wheel segments (fixed arrangement)
+      // Update wheel for next spin (remove consumed segments in consume mode)
+      this.state.playSession = this.wheelEngine.updateWheelForNextSpin(this.state.playSession);
+
+      // Get current wheel segments after cleanup
       const segments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
+      
+      // Re-render wheel with updated segments if any were removed
+      await this.renderWheel();
 
       if (segments.length === 0) {
         this.showError('No eligible photos to spin! All chances may be consumed.');
@@ -861,7 +867,13 @@ export class App {
       // Determine winner based on which segment ended up under the needle
       const winningSegment = this.wheelRenderer.getSegmentUnderNeedle();
       if (!winningSegment) {
-        this.showError('Error determining winning segment');
+        this.showError('Error determining winning segment - no segments available');
+        // Re-enable spin button
+        const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.textContent = 'Spin';
+        }
         return;
       }
 
@@ -879,15 +891,28 @@ export class App {
         return;
       }
 
-      // Update session state for consume mode
+      // Update session state for consume mode  
       this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningPhotoId);
+      
+      // Mark the specific winning segment for removal on next spin (consume mode only)
+      // But don't consume if it would leave the game unplayable
+      if (this.state.playSession.spinMode === 'consume') {
+        const currentSegments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
+        
+        // Only consume the segment if there will be more than 1 segment remaining
+        if (currentSegments.length > 1) {
+          const winningSegmentId = `${winningSegment.photoId}_${winningSegment.startAngle}`;
+          this.state.playSession = this.wheelEngine.markSegmentAsConsumed(this.state.playSession, winningSegmentId);
+        } else {
+          console.log('Last segment - not consuming to keep game playable');
+        }
+      }
 
       // Display result
       await this.displaySpinResult(winningPhoto, winningCategory);
 
-      // Update session stats and re-render wheel for consume mode
+      // Update session stats but do NOT re-render wheel yet (keep winning segment visible)
       this.updateSessionStats();
-      await this.renderWheel();
 
     } catch (error) {
       console.error('Error during spin:', error);
@@ -957,7 +982,7 @@ export class App {
     }
 
     // Reset the play session
-    this.state.playSession = this.wheelEngine.resetPlaySession(this.state.playSession);
+    this.state.playSession = await this.wheelEngine.resetPlaySession(this.state.playSession, this.state.currentGallery);
     
     // Update UI
     this.updateSessionStats();

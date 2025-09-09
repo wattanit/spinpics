@@ -31,14 +31,15 @@ export class WheelEngine {
       spinMode: gallery.spinMode,
       currentChances,
       originalChances,
-      wheelSegments
+      wheelSegments,
+      consumedSegments: new Set<string>()
     };
   }
 
   /**
-   * Resets a play session to original chance values
+   * Resets a play session to original chance values and restores full wheel
    */
-  resetPlaySession(session: PlaySession): PlaySession {
+  async resetPlaySession(session: PlaySession, gallery: Gallery): Promise<PlaySession> {
     const newCurrentChances = new Map<string, number>();
     
     // Reset current chances to original values
@@ -46,9 +47,14 @@ export class WheelEngine {
       newCurrentChances.set(photoId, originalChance);
     });
     
+    // Regenerate full wheel segments with original chances
+    const wheelSegments = await this.generateInitialWheelSegments(gallery, session.originalChances);
+    
     return {
       ...session,
-      currentChances: newCurrentChances
+      currentChances: newCurrentChances,
+      wheelSegments,
+      consumedSegments: new Set<string>() // Clear consumed segments on reset
     };
   }
 
@@ -184,7 +190,8 @@ export class WheelEngine {
   }
 
   /**
-   * Gets current wheel segments for rendering (filters out consumed segments)
+   * Gets current wheel segments for rendering
+   * In consume mode, removes only specifically consumed segments (maintains order)
    */
   getCurrentWheelSegments(session: PlaySession): WheelSegment[] {
     if (session.spinMode === 'static') {
@@ -192,32 +199,66 @@ export class WheelEngine {
       return session.wheelSegments;
     }
     
-    // In consume mode, filter out consumed segments
-    const activeSegments: WheelSegment[] = [];
-    const consumedCounts = new Map<string, number>();
+    // In consume mode, filter out only the specifically consumed segments
+    // This maintains visual consistency and segment order
+    return session.wheelSegments.filter(segment => {
+      const segmentId = `${segment.photoId}_${segment.startAngle}`;
+      return !session.consumedSegments.has(segmentId);
+    });
+  }
+
+  /**
+   * Marks a specific segment as consumed for removal on next spin
+   * This maintains visual consistency in consume mode
+   */
+  markSegmentAsConsumed(session: PlaySession, winningSegmentId: string): PlaySession {
+    const updatedConsumedSegments = new Set(session.consumedSegments);
+    updatedConsumedSegments.add(winningSegmentId);
     
-    // Calculate how many segments each photo has consumed
-    session.originalChances.forEach((original, photoId) => {
-      const current = session.currentChances.get(photoId) || 0;
-      const consumed = original - current;
-      if (consumed > 0) {
-        consumedCounts.set(photoId, consumed);
-      }
+    return {
+      ...session,
+      consumedSegments: updatedConsumedSegments
+    };
+  }
+
+  /**
+   * Removes consumed segments and regenerates wheel angles for remaining segments
+   * Called at the start of a new spin to clean up consumed segments
+   */
+  updateWheelForNextSpin(session: PlaySession): PlaySession {
+    if (session.spinMode === 'static') {
+      return session; // No changes needed in static mode
+    }
+    
+    // Remove consumed segments
+    const remainingSegments = session.wheelSegments.filter(segment => {
+      const segmentId = `${segment.photoId}_${segment.startAngle}`;
+      return !session.consumedSegments.has(segmentId);
     });
     
-    // Filter segments based on consumed amounts
-    for (const segment of session.wheelSegments) {
-      const photoConsumed = consumedCounts.get(segment.photoId) || 0;
-      const photoSegments = session.wheelSegments.filter(s => s.photoId === segment.photoId);
-      const segmentIndex = photoSegments.indexOf(segment);
+    // Regenerate angles for remaining segments (maintain order)
+    const updatedSegments: WheelSegment[] = [];
+    if (remainingSegments.length > 0) {
+      const segmentAngle = (2 * Math.PI) / remainingSegments.length;
+      let currentAngle = 0;
       
-      // Keep segment if it hasn't been consumed yet
-      if (segmentIndex >= photoConsumed) {
-        activeSegments.push(segment);
+      for (const segment of remainingSegments) {
+        updatedSegments.push({
+          ...segment,
+          startAngle: currentAngle,
+          endAngle: currentAngle + segmentAngle,
+          normalizedChance: 1 / remainingSegments.length
+        });
+        
+        currentAngle += segmentAngle;
       }
     }
     
-    return activeSegments;
+    return {
+      ...session,
+      wheelSegments: updatedSegments,
+      consumedSegments: new Set<string>() // Clear consumed segments after removal
+    };
   }
 
   /**

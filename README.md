@@ -249,9 +249,12 @@ Photo {
 - **Visual consistency**: Displayed winner always matches segment under needle
 - **Animation cleanup**: Previous winning animations cleared before new spins
 
-#### 4.4 Session Integration (✅ Complete)
+#### 4.4 Session Integration & Consume Mode (✅ Complete)
 - **Fixed wheel arrangement**: Segments generated once per session with randomized order
-- **Consume mode filtering**: Dynamic segment visibility based on remaining chances
+- **Consume mode visual consistency**: Segments remain visible until next spin to prevent gaps
+- **Smart segment removal**: Consumed segments removed only when starting new spins
+- **Segment order preservation**: Remaining segments maintain relative positions (no reshuffling)
+- **Edge case handling**: Final segment never consumed to keep game playable
 - **Weighted probability preservation**: Maintains fair chance distribution while ensuring visual accuracy
 
 ### 🚧 Current Phase: Final Polish & Optimization

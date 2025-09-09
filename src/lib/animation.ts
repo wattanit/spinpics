@@ -428,6 +428,17 @@ export class WheelRenderer {
    * Gets the segment that is currently under the needle (top of wheel)
    */
   getSegmentUnderNeedle(): WheelSegment | null {
+    // Safety check: ensure we have segments
+    if (this.segments.length === 0) {
+      console.error('No segments available to determine winner');
+      return null;
+    }
+    
+    // If only one segment, it must be the winner
+    if (this.segments.length === 1) {
+      return this.segments[0];
+    }
+    
     const currentAngle = this.getCurrentAngle();
     const needleAngle = -Math.PI / 2; // Top of the wheel (12 o'clock position)
     
@@ -445,7 +456,9 @@ export class WheelRenderer {
       }
     });
     
-    return segmentAtNeedle || null;
+    // Fallback: if we can't find the exact segment, return the first one
+    // This can happen due to floating point precision issues
+    return segmentAtNeedle || this.segments[0];
   }
 
   /**

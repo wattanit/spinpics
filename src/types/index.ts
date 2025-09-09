@@ -30,6 +30,7 @@ export interface PlaySession {
   currentChances: Map<string, number>; // photoId -> current chance
   originalChances: Map<string, number>; // photoId -> original chance
   wheelSegments: WheelSegment[]; // Fixed wheel arrangement for the session
+  consumedSegments: Set<string>; // Specific segment IDs consumed (for visual removal)
 }
 
 // UI State management
