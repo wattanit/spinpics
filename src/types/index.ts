@@ -21,6 +21,7 @@ export interface Gallery {
   spinMode: SpinMode;
   categories: Category[];
   photos: Photo[];
+  coverPhotoId?: string; // Optional cover photo for gallery display
 }
 
 // Session state for consume mode

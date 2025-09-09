@@ -190,15 +190,51 @@ export class App {
     } else {
       container.innerHTML = this.state.galleries.map(gallery => `
         <div class="gallery-card" data-gallery-id="${gallery.galleryId}">
-          <h3>${gallery.name}</h3>
-          <p>${gallery.photos.length} photos • ${gallery.categories.length} categories</p>
-          <p>Mode: ${gallery.spinMode}</p>
-          <div class="gallery-actions">
-            <button class="btn btn-outline" onclick="app.editGallery('${gallery.galleryId}')">Edit</button>
-            <button class="btn btn-primary" onclick="app.playGallery('${gallery.galleryId}')">Play</button>
+          <div class="gallery-cover">
+            <img class="gallery-cover-image" data-gallery-id="${gallery.galleryId}" alt="${gallery.name} cover">
+          </div>
+          <div class="gallery-info">
+            <h3>${gallery.name}</h3>
+            <p>${gallery.photos.length} photos • ${gallery.categories.length} categories</p>
+            <p>Mode: ${gallery.spinMode}</p>
+            <div class="gallery-actions">
+              <button class="btn btn-outline" onclick="app.editGallery('${gallery.galleryId}')">Edit</button>
+              <button class="btn btn-primary" onclick="app.playGallery('${gallery.galleryId}')">Play</button>
+            </div>
           </div>
         </div>
       `).join('');
+      
+      // Load cover photos for each gallery
+      this.loadGalleryCoverPhotos();
+    }
+  }
+
+  private async loadGalleryCoverPhotos(): Promise<void> {
+    for (const gallery of this.state.galleries) {
+      const coverImg = document.querySelector(`img.gallery-cover-image[data-gallery-id="${gallery.galleryId}"]`) as HTMLImageElement;
+      if (!coverImg) continue;
+
+      // Get cover photo (use coverPhotoId if set, otherwise first photo)
+      const coverPhotoId = gallery.coverPhotoId || (gallery.photos.length > 0 ? gallery.photos[0].photoId : null);
+      
+      if (coverPhotoId) {
+        try {
+          const photoBlob = await storage.getPhoto(coverPhotoId);
+          if (photoBlob) {
+            const photoUrl = URL.createObjectURL(photoBlob);
+            coverImg.src = photoUrl;
+            coverImg.style.display = 'block';
+            // Clean up URL when image loads
+            coverImg.onload = () => URL.revokeObjectURL(photoUrl);
+          }
+        } catch (error) {
+          console.error('Error loading cover photo:', error);
+        }
+      } else {
+        // No photos in gallery - show placeholder
+        coverImg.style.display = 'none';
+      }
     }
   }
 
@@ -353,10 +389,66 @@ export class App {
     const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
     if (spinModeSelect) spinModeSelect.value = gallery.spinMode;
 
+    // Populate cover photo selection
+    this.populateCoverPhotoSelection(gallery);
+
     // Render photos, categories, and set default tab
     this.renderPhotos();
     this.renderCategories();
     this.switchTab('photos');
+  }
+
+  private async populateCoverPhotoSelection(gallery: Gallery): Promise<void> {
+    const coverPhotoSelect = document.getElementById('cover-photo-select') as HTMLSelectElement;
+    
+    if (!coverPhotoSelect) return;
+
+    // Clear existing options
+    coverPhotoSelect.innerHTML = '<option value="">No cover photo</option>';
+
+    // Add photo options
+    for (const photo of gallery.photos) {
+      const option = document.createElement('option');
+      option.value = photo.photoId;
+      option.textContent = `Photo ${gallery.photos.indexOf(photo) + 1}`;
+      coverPhotoSelect.appendChild(option);
+    }
+
+    // Set current value
+    coverPhotoSelect.value = gallery.coverPhotoId || '';
+
+    // Update preview
+    await this.updateCoverPhotoPreview(gallery.coverPhotoId);
+
+    // Add change event listener
+    coverPhotoSelect.onchange = async () => {
+      await this.updateCoverPhotoPreview(coverPhotoSelect.value || undefined);
+    };
+  }
+
+  private async updateCoverPhotoPreview(photoId?: string): Promise<void> {
+    const coverPhotoPreview = document.getElementById('cover-photo-preview') as HTMLDivElement;
+    const coverPhotoImage = document.getElementById('cover-photo-image') as HTMLImageElement;
+    
+    if (!coverPhotoPreview || !coverPhotoImage) return;
+
+    if (photoId) {
+      try {
+        const photoBlob = await storage.getPhoto(photoId);
+        if (photoBlob) {
+          const photoUrl = URL.createObjectURL(photoBlob);
+          coverPhotoImage.src = photoUrl;
+          coverPhotoPreview.style.display = 'block';
+          // Clean up URL when image loads
+          coverPhotoImage.onload = () => URL.revokeObjectURL(photoUrl);
+        }
+      } catch (error) {
+        console.error('Error loading cover photo preview:', error);
+        coverPhotoPreview.style.display = 'none';
+      }
+    } else {
+      coverPhotoPreview.style.display = 'none';
+    }
   }
 
   private switchTab(tabName: string): void {
@@ -472,6 +564,11 @@ export class App {
       }
 
       this.renderPhotos();
+      
+      // Refresh cover photo selection to include new photos
+      if (this.state.currentGallery) {
+        await this.populateCoverPhotoSelection(this.state.currentGallery);
+      }
     } catch (error) {
       console.error('Failed to upload photos:', error);
       this.showError('Failed to upload photos');
@@ -535,6 +632,12 @@ export class App {
       await storage.deletePhoto(photoId);
       
       this.state.currentGallery.photos = this.state.currentGallery.photos.filter(p => p.photoId !== photoId);
+      
+      // If deleted photo was the cover photo, clear it
+      if (this.state.currentGallery.coverPhotoId === photoId) {
+        this.state.currentGallery.coverPhotoId = undefined;
+      }
+      
       await storage.saveGallery(this.state.currentGallery);
       
       // Update in galleries array
@@ -544,6 +647,11 @@ export class App {
       }
 
       this.renderPhotos();
+      
+      // Refresh cover photo selection to reflect deleted photo
+      if (this.state.currentGallery) {
+        await this.populateCoverPhotoSelection(this.state.currentGallery);
+      }
     } catch (error) {
       console.error('Failed to delete photo:', error);
       this.showError('Failed to delete photo');
@@ -678,9 +786,11 @@ export class App {
 
     const nameInput = document.getElementById('gallery-name-input') as HTMLInputElement;
     const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
+    const coverPhotoSelect = document.getElementById('cover-photo-select') as HTMLSelectElement;
     
     const name = nameInput?.value?.trim();
     const spinMode = spinModeSelect?.value as 'static' | 'consume';
+    const coverPhotoId = coverPhotoSelect?.value || undefined;
 
     if (!name) {
       this.showError('Please enter a gallery name');
@@ -700,6 +810,7 @@ export class App {
     try {
       this.state.currentGallery.name = name;
       this.state.currentGallery.spinMode = spinMode;
+      this.state.currentGallery.coverPhotoId = coverPhotoId;
 
       await storage.saveGallery(this.state.currentGallery);
       
@@ -708,6 +819,9 @@ export class App {
       if (galleryIndex >= 0) {
         this.state.galleries[galleryIndex] = this.state.currentGallery;
       }
+
+      // Refresh gallery list to update cover photos
+      this.renderGalleries();
 
       this.showError('Settings saved successfully!'); // Using showError for now as a notification
     } catch (error) {

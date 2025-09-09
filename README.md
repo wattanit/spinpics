@@ -130,19 +130,19 @@ Photo {
 
 ### Version 1.1 Development Plan
 
-#### Phase 6: Photo Lightbox Feature
-- [ ] 6.1 Add lightbox modal HTML structure and CSS styling
-- [ ] 6.2 Implement click handler for winning photos
-- [ ] 6.3 Create photo display with full-size view
-- [ ] 6.4 Add download functionality using blob URLs
-- [ ] 6.5 Implement close handlers (ESC key, outside click, close button)
+#### Phase 6: Photo Lightbox Feature ✅ COMPLETED
+- [x] 6.1 Add lightbox modal HTML structure and CSS styling
+- [x] 6.2 Implement click handler for winning photos
+- [x] 6.3 Create photo display with full-size view
+- [x] 6.4 Add download functionality using blob URLs
+- [x] 6.5 Implement close handlers (ESC key, outside click, close button)
 
-#### Phase 7: Gallery Cover Photo Selection
-- [ ] 7.1 Update Gallery TypeScript interface with `coverPhotoId?` field
-- [ ] 7.2 Add cover photo selection UI in gallery settings tab
-- [ ] 7.3 Update gallery card display to show cover photos
-- [ ] 7.4 Implement auto-default to first photo logic
-- [ ] 7.5 Update storage operations to handle cover photo field
+#### Phase 7: Gallery Cover Photo Selection ✅ COMPLETED
+- [x] 7.1 Update Gallery TypeScript interface with `coverPhotoId?` field
+- [x] 7.2 Add cover photo selection UI in gallery settings tab
+- [x] 7.3 Update gallery card display to show cover photos
+- [x] 7.4 Implement auto-default to first photo logic
+- [x] 7.5 Update storage operations to handle cover photo field
 
 #### Technical Implementation Details
 
