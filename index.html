@@ -6,7 +6,7 @@
     <meta name="description" content="Create customizable spinning wheel games with your photos">
     <meta name="theme-color" content="#2196F3">
     
-    <title>Photo Wheel Spinner</title>
+    <title>SpinPics</title>
     
     <!-- Icons for various devices -->
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
@@ -18,7 +18,7 @@
     <div id="app" class="app-container">
         <!-- Navigation Header -->
         <header class="app-header">
-            <h1 class="app-title">Photo Wheel Spinner</h1>
+            <h1 class="app-title">SpinPics</h1>
             <nav class="app-nav">
                 <button id="home-btn" class="nav-btn active">Home</button>
                 <button id="create-btn" class="nav-btn">Create</button>
@@ -101,9 +101,6 @@
                     <button id="reset-session-btn" class="btn btn-secondary" style="display: none;">Reset Session</button>
                 </div>
 
-                <!-- Session Statistics -->
-                <div id="session-stats" class="session-stats"></div>
-
                 <div class="game-container">
                     <!-- Spinning Wheel -->
                     <div id="wheel-container" class="wheel-container">
@@ -122,6 +119,9 @@
                         <div id="winning-photo" class="winning-photo"></div>
                     </div>
                 </div>
+
+                <!-- Session Statistics -->
+                <div id="session-stats" class="session-stats"></div>
             </section>
         </main>
     </div>

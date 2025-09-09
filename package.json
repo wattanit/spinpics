@@ -1,8 +1,8 @@
 {
-  "name": "photo-wheel-spinner",
+  "name": "spinpics",
   "private": true,
   "version": "1.0.0",
-  "description": "A progressive web application for creating customizable spinning wheel games using user-uploaded photos",
+  "description": "SpinPics - Create customizable spinning wheel games with your photos",
   "type": "module",
   "scripts": {
     "dev": "vite",

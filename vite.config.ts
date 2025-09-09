@@ -11,8 +11,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Photo Wheel Spinner',
-        short_name: 'Wheel Spinner',
+        name: 'SpinPics',
+        short_name: 'SpinPics',
         description: 'Create customizable spinning wheel games with your photos',
         theme_color: '#2196F3',
         background_color: '#ffffff',
