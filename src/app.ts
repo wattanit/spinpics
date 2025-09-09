@@ -61,6 +61,20 @@ export class App {
       this.showScreen('home');
     });
 
+    document.getElementById('back-to-home')?.addEventListener('click', () => {
+      this.showScreen('home');
+    });
+
+    document.getElementById('play-gallery')?.addEventListener('click', () => {
+      if (this.state.currentGallery) {
+        this.playGallery(this.state.currentGallery.galleryId);
+      }
+    });
+
+    document.getElementById('create-btn')?.addEventListener('click', () => {
+      this.showModal('new-gallery-modal');
+    });
+
     // Modal controls
     document.getElementById('new-gallery-btn')?.addEventListener('click', () => {
       this.showModal('new-gallery-modal');
@@ -220,6 +234,9 @@ export class App {
       nameInput.value = '';
 
       console.log('Gallery created:', gallery);
+
+      // Navigate to the newly created gallery's management page
+      await this.editGallery(gallery.galleryId);
     } catch (error) {
       console.error('Failed to create gallery:', error);
       this.showError('Failed to create gallery');
