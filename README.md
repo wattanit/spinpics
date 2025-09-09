@@ -1,23 +1,82 @@
 # SpinPics
 
+<img src="./spinpics-icon.png" alt="SpinPics Logo" width="400">
+
 A progressive web application for creating customizable spinning wheel games with your photos.
 
-## Implementation Plan
+## Features
 
-### Phase 1: Core Infrastructure & Data Management
+- **Progressive Web App** - Install on any device, works offline
+- **Photo Management** - Upload and organize your photos into categories
+- **Spinning Wheel Game** - Physics-based wheel with weighted probabilities
+- **Customizable Categories** - Color-coded organization for your photos
+- **Two Game Modes**:
+  - **Static Mode**: Chances stay the same for every spin
+  - **Consume Mode**: Winning photos reduce their chances over time
+- **Mobile-First Design** - Optimized for touch devices
+- **Fast & Lightweight** - Only ~53KB total bundle size
 
-#### 1.1 Project Setup
-- Set up PWA structure with manifest.json and service worker
-- Create basic HTML5 structure with CSS3 styling
-- Implement responsive, mobile-first design framework
+## Quick Start
 
-#### 1.2 Data Storage Layer
-- **LocalStorage**: Gallery metadata, categories, photo references, settings
-- **IndexedDB**: Photo blob storage for performance and size handling
-- Create data access layer with CRUD operations
-- Implement unique ID generation for galleries, categories, and photos
+1. **Try it online** or **install as PWA** from your browser
+2. **Create a gallery** and give it a name
+3. **Upload photos** and organize them into colored categories
+4. **Set chance values** for each photo (higher = more likely to win)
+5. **Start spinning** and enjoy the game!
 
-#### 1.3 Core Data Models
+## How to Play
+
+1. **Gallery Setup**: Create galleries to organize different sets of photos
+2. **Add Photos**: Upload images and assign them to categories with custom colors
+3. **Set Chances**: Give each photo a chance value (1-99) - higher numbers = more likely to win
+4. **Choose Mode**: 
+   - Static: Same odds every spin
+   - Consume: Winners get reduced chances
+5. **Spin**: Watch the wheel spin and see which photo wins!
+
+## Development
+
+### Getting Started
+```bash
+git clone <repository>
+cd photo-wheel-spinner
+npm install
+npm run dev
+```
+
+### Commands
+- `npm run dev` - Development server with hot reload
+- `npm run build` - Production build
+- `npm run preview` - Preview production build
+- `npm run lint` - Code quality check
+- `npm run type-check` - TypeScript validation
+
+### Technology Stack
+- **Frontend**: Vite + TypeScript + HTML5 + CSS3
+- **Storage**: LocalStorage + IndexedDB
+- **Architecture**: PWA with Service Worker
+- **Performance**: 60fps animations, offline-first
+
+---
+
+## Development Details
+
+<details>
+<summary>Implementation Plan & Technical Details</summary>
+
+### Phase 1: Core Infrastructure & Data Management ✅
+
+#### 1.1 Project Setup ✅
+- Vite + TypeScript PWA with modern tooling
+- Complete HTML5 structure with responsive design
+- PWA configuration with manifest and service worker
+
+#### 1.2 Data Storage Layer ✅
+- LocalStorage for gallery metadata
+- IndexedDB for photo blob storage
+- CRUD operations with error handling
+
+#### 1.3 Core Data Models ✅
 ```javascript
 Gallery {
   galleryId: string,
@@ -40,273 +99,31 @@ Photo {
 }
 ```
 
-### Phase 2: Gallery Management System
+### Phase 2: Gallery Management System ✅
+- Complete CRUD operations for galleries
+- Category management with color picker
+- Photo upload and organization
+- Tabbed interface with responsive design
 
-#### 2.1 Gallery CRUD Operations
-- Create new gallery with unique name
-- List all galleries on main screen
-- Edit gallery name and settings
-- Delete gallery with confirmation
+### Phase 3: Game Configuration & Core Logic ✅
+- Weighted random algorithm implementation
+- Static vs Consume mode configuration
+- Session state management
+- Interactive gameplay with result display
 
-#### 2.2 Category Management
-- Create categories with name and color picker
-- Edit existing categories
-- Delete categories (photos become uncategorized)
-- Color validation and picker UI
+### Phase 4: Spinning Wheel UI & Animation ✅
+- 60fps canvas-based wheel rendering
+- Physics-based spinning animation
+- Dynamic segment generation
+- Authentic winner determination
 
-#### 2.3 Photo Management
-- File upload interface for multiple photos
-- Photo-to-category assignment dropdown
-- Chance value input with validation
-- Photo removal functionality
-- Image preview and management UI
-
-### Phase 3: Game Configuration & Core Logic
-
-#### 3.1 Spin Mode Configuration
-- Static mode: Chances remain unchanged
-- Consume mode: Winning photo chances reduce by 1
-
-#### 3.2 Weighted Random Algorithm
-- Implement probability-based selection
-- Handle edge cases (zero chances, empty galleries)
-- Session state management for consume mode
-
-### Phase 4: Spinning Wheel UI & Animation
-
-#### 4.1 Dynamic Wheel Generation
-- Generate wheel segments based on photos and categories
-- Apply category colors to segments
-- Calculate segment sizes based on weighted chances
-
-#### 4.2 Wheel Animation System
-- 60fps spinning animation
-- Physics-based deceleration
-- Visual feedback for winning selection
-- Smooth transitions and effects
-
-#### 4.3 Results Display
-- Prominent winning photo display
-- Animation and celebration effects
-- Session management for consume mode
-
-### Phase 5: PWA Features & Polish
-
-#### 5.1 Progressive Web App Implementation
-- Service worker for offline capability
-- Web app manifest for installability
-- Caching strategies for assets and data
-
-#### 5.2 Responsive Design & UX
-- Mobile-first responsive layout
-- Touch-friendly interactions
-- Loading states and error handling
-- Accessibility compliance
-
-#### 5.3 Session Management
-- Play session state tracking
-- Reset session functionality for consume mode
-- Navigation between game and management screens
-
-## Technical Specifications
-
-### Technology Stack
-- **Frontend**: Vite + TypeScript + HTML5 + CSS3
-- **Storage**: LocalStorage + IndexedDB
-- **Architecture**: PWA with Service Worker
-- **Build Tool**: Vite with PWA plugin
-- **Development**: Hot reload, TypeScript checking, ESLint
+### Phase 5: Final Polish & Optimization ✅
+- Complete PWA implementation with offline support
+- Performance optimization (~53KB bundle)
+- Mobile UX improvements
+- Professional branding and icon set
 
 ### Browser Compatibility
 - Chrome, Firefox, Safari, Edge (latest versions)
 - Desktop and mobile platforms
 - Full offline functionality
-
-### Performance Targets
-- 60fps animations
-- Fast photo loading from IndexedDB
-- Responsive UI interactions
-- Minimal memory footprint
-
-## Project Structure
-```
-/
-├── index.html              # Main app entry point
-├── manifest.json           # PWA manifest
-├── sw.js                   # Service worker
-├── css/
-│   ├── main.css           # Core styles
-│   ├── gallery.css        # Gallery management
-│   ├── wheel.css          # Spinning wheel
-│   └── responsive.css     # Mobile responsiveness
-├── js/
-│   ├── app.js             # Main application logic
-│   ├── storage.js         # LocalStorage + IndexedDB layer
-│   ├── gallery.js         # Gallery management
-│   ├── wheel.js           # Spinning wheel logic
-│   ├── animation.js       # Wheel animations
-│   └── utils.js           # Utility functions
-└── assets/
-    ├── icons/             # PWA icons
-    └── images/            # UI assets
-```
-
-## Development Progress
-
-### ✅ Completed: Phase 1 Core Infrastructure & Data Management
-
-#### 1.1 Project Setup (✅ Complete)
-- **Vite + TypeScript PWA**: Modern tooling with hot reload and type safety
-- **index.html**: Complete HTML5 structure with semantic layout
-  - Three main screens: Home, Gallery management, Play/game  
-  - Tab-based gallery management (Photos, Categories, Settings)
-  - Modal dialogs for creating galleries and categories
-  - Canvas element for spinning wheel rendering
-- **PWA Configuration**: Automated manifest and service worker via vite-plugin-pwa
-
-#### 1.2 Data Storage Layer (✅ Complete)
-- **src/lib/storage.ts**: Complete StorageManager implementation
-  - LocalStorage for gallery metadata with error handling
-  - IndexedDB for photo blob storage with async operations
-  - CRUD operations for galleries and photos
-  - Data validation and duplicate prevention
-- **Integration**: Connected to App class with proper error handling
-
-#### 1.3 Core Data Models (✅ Complete)
-- **src/types/index.ts**: Complete TypeScript interfaces
-- **Gallery, Category, Photo**: All data models implemented
-- **PlaySession, AppState**: Session management types ready
-
-### ✅ Completed: Phase 2 Gallery Management System
-
-#### 2.1 Gallery CRUD Operations (✅ Complete)
-- **Create new gallery**: Unique name validation and duplicate prevention
-- **List all galleries**: Main screen display with photo/category counts
-- **Edit gallery**: Navigate to gallery management screen with tabbed interface
-- **Delete gallery**: Complete removal with confirmation and IndexedDB cleanup
-
-#### 2.2 Category Management (✅ Complete)
-- **Create categories**: Name input with color picker UI (#hex color selection)
-- **Visual category display**: Color-coded indicators and photo borders
-- **Delete categories**: Smart uncategorization of photos when categories removed
-- **Category validation**: Duplicate name prevention and error handling
-
-#### 2.3 Photo Management (✅ Complete)
-- **File upload interface**: Click-to-upload with multiple file selection
-- **Photo-to-category assignment**: Dropdown selection for organizing photos
-- **Chance value editing**: Numerical input with validation (minimum 0)
-- **Photo removal**: Delete functionality with confirmation dialogs
-- **Image preview**: Grid layout with category-colored borders and lazy loading
-- **IndexedDB integration**: Efficient blob storage and retrieval
-
-#### 2.4 Gallery Settings & UI (✅ Complete)
-- **Tabbed interface**: Photos, Categories, and Settings tabs with active states
-- **Gallery name editing**: Real-time updates with duplicate validation
-- **Spin mode configuration**: Static vs Consume mode selection
-- **Responsive design**: Mobile-first layout with touch-friendly controls
-- **Loading states**: Visual feedback during operations and error handling
-
-### ✅ Completed: Phase 3 Game Configuration & Core Logic
-
-#### 3.1 Spin Mode Configuration (✅ Complete)
-- **Static mode**: Chances remain unchanged after each spin
-- **Consume mode**: Winning photo chances reduce by 1 for session duration
-- **Mode selection**: UI toggle in gallery settings with persistence
-
-#### 3.2 Weighted Random Algorithm (✅ Complete)
-- **src/lib/wheel.ts**: Complete WheelEngine class implementation
-- **Probability-based selection**: Fair weighted random selection using chance values
-- **Edge case handling**: Zero chances, empty galleries, consumed photos
-- **Session state management**: Real-time chance tracking for consume mode
-
-#### 3.3 Play Screen & Game Logic (✅ Complete)
-- **Play session management**: Session creation, reset, and state tracking
-- **Gallery validation**: Ensure galleries are ready for gameplay
-- **Interactive gameplay**: Functional spin button with result display
-- **Navigation integration**: Seamless flow between gallery management and play
-- **Session statistics**: Real-time display of eligible photos and chance totals
-- **Result presentation**: Winning photo display with category and chance information
-
-### ✅ Completed: Phase 4 Spinning Wheel UI & Animation
-
-#### 4.1 Dynamic Wheel Generation (✅ Complete)
-- **src/lib/animation.ts**: Complete WheelRenderer class with canvas-based rendering
-- **Segment generation**: Dynamic wheel segments based on photos and categories
-- **Category colors**: Visual segments with category-specific colors and borders
-- **Weighted segment sizing**: Segments sized proportionally to chance values
-
-#### 4.2 Wheel Animation System (✅ Complete)
-- **60fps spinning animation**: Smooth, physics-based wheel rotation
-- **Consistent clockwise rotation**: Always spins in the same direction for predictability
-- **Physics-based deceleration**: Realistic easing with cubic ease-out function
-- **Random spin targeting**: Authentic spinning wheel behavior with random final position
-- **High-DPI rendering**: Crisp wheel display on all device resolutions
-
-#### 4.3 Results Display & Winner Selection (✅ Complete)
-- **Authentic winner determination**: Winner determined by segment under needle after spin
-- **Category-wide highlighting**: All segments of winning category flash during celebration
-- **Precise needle targeting**: Winning animation highlights exact segment under pointer
-- **Visual consistency**: Displayed winner always matches segment under needle
-- **Animation cleanup**: Previous winning animations cleared before new spins
-
-#### 4.4 Session Integration & Consume Mode (✅ Complete)
-- **Fixed wheel arrangement**: Segments generated once per session with randomized order
-- **Consume mode visual consistency**: Segments remain visible until next spin to prevent gaps
-- **Smart segment removal**: Consumed segments removed only when starting new spins
-- **Segment order preservation**: Remaining segments maintain relative positions (no reshuffling)
-- **Edge case handling**: Final segment never consumed to keep game playable
-- **Weighted probability preservation**: Maintains fair chance distribution while ensuring visual accuracy
-
-### ✅ Completed: Phase 5 Final Polish & Optimization
-
-#### 5.1 Progressive Web App Implementation (✅ Complete)
-- **Service worker**: Offline capability with Workbox caching strategies
-- **Web app manifest**: Full installability with proper icons and metadata
-- **Asset caching**: All resources precached for optimal offline performance
-- **Icons**: Complete icon set (192x192, 512x512, favicon, apple-touch-icon)
-
-#### 5.2 Performance & Bundle Optimization (✅ Complete)
-- **Lightweight bundle**: Total size ~53KB with optimal code splitting
-- **Gzip compression**: ~75% size reduction for production builds
-- **Module chunking**: Storage, wheel, and main app bundles separated
-- **TypeScript**: Full type safety with zero warnings or errors
-- **ESLint**: Code quality enforcement with proper TypeScript integration
-
-#### 5.3 UX Polish & Mobile Optimization (✅ Complete)
-- **App rebranding**: Updated to "SpinPics" across all interfaces
-- **Play screen layout**: Session stats moved to bottom for better game focus
-- **Mobile photo display**: Improved photo sizing in small screen layouts
-- **Responsive wheel**: Proper wheel sizing across all breakpoints
-- **Touch-friendly**: Optimized interactions for mobile devices
-
-#### 5.4 Production Ready Features (✅ Complete)
-- **Professional branding**: SpinPics name and consistent UI
-- **Cross-platform icons**: Full PWA installation support
-- **Build optimization**: Fast builds (73ms) with source maps
-- **Development tools**: Hot reload, type checking, and linting
-- **Offline-first**: Complete functionality without internet
-
-### 🎉 Project Status: Production Ready
-
-SpinPics is now a fully featured, production-ready PWA with:
-- Complete gallery and photo management
-- Physics-based spinning wheel animations
-- Offline-first PWA capabilities
-- Professional UI/UX design
-- Cross-platform compatibility
-- Optimal performance and bundle size
-
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Start development server: `npm run dev`
-4. Build for production: `npm run build`
-5. Preview production build: `npm run preview`
-
-### Development Commands
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production with PWA features
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint for code quality
-- `npm run type-check` - Run TypeScript type checking
