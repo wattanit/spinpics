@@ -29,6 +29,7 @@ export interface PlaySession {
   spinMode: SpinMode;
   currentChances: Map<string, number>; // photoId -> current chance
   originalChances: Map<string, number>; // photoId -> original chance
+  wheelSegments: WheelSegment[]; // Fixed wheel arrangement for the session
 }
 
 // UI State management

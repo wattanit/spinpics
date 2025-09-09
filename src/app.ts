@@ -321,7 +321,7 @@ export class App {
     }
 
     this.state.currentGallery = gallery;
-    this.state.playSession = this.wheelEngine.createPlaySession(gallery);
+    this.state.playSession = await this.wheelEngine.createPlaySession(gallery);
     this.showScreen('play');
     
     await this.initializePlayScreen();
@@ -797,13 +797,10 @@ export class App {
     }
 
     try {
-      // Generate wheel segments
-      const segments = await this.wheelEngine.generateWheelSegments(
-        this.state.playSession,
-        this.state.currentGallery
-      );
+      // Get current wheel segments (fixed arrangement, filtered for consume mode)
+      const segments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
 
-      // Update wheel renderer with new segments
+      // Update wheel renderer with segments
       await this.wheelRenderer.updateSegments(segments);
       
       console.log(`Wheel rendered with ${segments.length} segments`);
@@ -842,37 +839,33 @@ export class App {
         spinBtn.textContent = 'Spinning...';
       }
 
-      // Generate wheel segments for current session
-      const segments = await this.wheelEngine.generateWheelSegments(
-        this.state.playSession,
-        this.state.currentGallery
-      );
+      // Clear any previous winning animation
+      this.wheelRenderer.clearWinnerHighlight();
+
+      // Get current wheel segments (fixed arrangement)
+      const segments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
 
       if (segments.length === 0) {
         this.showError('No eligible photos to spin! All chances may be consumed.');
         return;
       }
 
-      // Perform the weighted selection to determine target
-      const winningPhotoId = this.wheelEngine.spinWheel(this.state.playSession, this.state.currentGallery.photos);
-      
-      if (!winningPhotoId) {
-        this.showError('Error during spin calculation');
-        return;
-      }
-
-      // Find winning segment for animation targeting
-      const winningSegment = segments.find(s => s.photoId === winningPhotoId);
-      if (!winningSegment) {
-        this.showError('Error finding winning segment');
-        return;
-      }
-
-      // Calculate target angle (center of winning segment)
-      const targetAngle = (winningSegment.startAngle + winningSegment.endAngle) / 2;
+      // Generate random spin (2-5 full rotations + random angle)
+      const baseRotations = (Math.random() * 3 + 2) * Math.PI * 2; // 2-5 full rotations
+      const randomAngle = Math.random() * Math.PI * 2; // Random final position
+      const targetAngle = baseRotations + randomAngle;
 
       // Perform wheel spin animation
       await this.wheelRenderer.startSpin(targetAngle, 3000);
+
+      // Determine winner based on which segment ended up under the needle
+      const winningSegment = this.wheelRenderer.getSegmentUnderNeedle();
+      if (!winningSegment) {
+        this.showError('Error determining winning segment');
+        return;
+      }
+
+      const winningPhotoId = winningSegment.photoId;
 
       // Highlight the winning segment
       this.wheelRenderer.highlightWinner(winningPhotoId);

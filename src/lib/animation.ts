@@ -8,6 +8,7 @@ export class WheelRenderer {
   private animationFrameId: number | null = null;
   private imageCache = new Map<string, HTMLImageElement>();
   private winningSegmentId: string | null = null;
+  private winningCategoryId: string | null = null;
   private highlightAnimation: number = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -90,7 +91,13 @@ export class WheelRenderer {
 
     // Draw segments
     this.segments.forEach((segment) => {
-      const isWinning = segment.photoId === this.winningSegmentId;
+      const segmentId = `${segment.photoId}_${segment.startAngle}`;
+      
+      // Highlight if this is the exact winning segment OR if it belongs to the winning category
+      const isWinningSegment = segmentId === this.winningSegmentId || segment.photoId === this.winningSegmentId;
+      const isWinningCategory = this.winningCategoryId && segment.category.categoryId === this.winningCategoryId;
+      const isWinning = isWinningSegment || isWinningCategory;
+      
       this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning);
     });
 
@@ -227,7 +234,18 @@ export class WheelRenderer {
 
       // Calculate spin parameters
       const startAngle = this.animation?.currentAngle || 0;
-      const totalRotation = targetAngle + Math.PI * 6; // Add 3 full rotations for effect
+      
+      // Always ensure clockwise rotation by adding extra full rotations
+      // Target should be reached by going in positive direction (clockwise)
+      const fullRotations = Math.PI * 6; // 3 full clockwise rotations for effect
+      
+      // Normalize target angle to be greater than start angle to ensure clockwise
+      let normalizedTarget = targetAngle;
+      while (normalizedTarget <= startAngle) {
+        normalizedTarget += Math.PI * 2; // Add full rotation until target is ahead
+      }
+      
+      const totalRotation = normalizedTarget + fullRotations;
       
       this.animation = {
         isSpinning: true,
@@ -313,9 +331,36 @@ export class WheelRenderer {
 
   /**
    * Highlights winning segment with animation
+   * Finds the specific segment under the needle and highlights all segments of that category 
    */
   highlightWinner(winningPhotoId: string): void {
-    this.winningSegmentId = winningPhotoId;
+    // Find the segment that is actually under the needle after rotation
+    const currentAngle = this.getCurrentAngle();
+    const needleAngle = -Math.PI / 2; // Top of the wheel (12 o'clock position)
+    
+    // Find which segment is at the needle position
+    const segmentAtNeedle = this.segments.find(segment => {
+      const adjustedStartAngle = this.normalizeAngle(segment.startAngle + currentAngle);
+      const adjustedEndAngle = this.normalizeAngle(segment.endAngle + currentAngle);
+      const normalizedNeedleAngle = this.normalizeAngle(needleAngle);
+      
+      // Handle wrap-around case
+      if (adjustedStartAngle > adjustedEndAngle) {
+        return normalizedNeedleAngle >= adjustedStartAngle || normalizedNeedleAngle <= adjustedEndAngle;
+      } else {
+        return normalizedNeedleAngle >= adjustedStartAngle && normalizedNeedleAngle <= adjustedEndAngle;
+      }
+    });
+    
+    // Set the winning segment ID to the specific segment under the needle
+    // If we can't find the segment at needle, fallback to any segment with winning photo
+    this.winningSegmentId = segmentAtNeedle ? 
+      `${segmentAtNeedle.photoId}_${segmentAtNeedle.startAngle}` : winningPhotoId;
+    
+    // Store the winning category to highlight all segments of that category
+    const winningSegment = segmentAtNeedle || this.segments.find(s => s.photoId === winningPhotoId);
+    this.winningCategoryId = winningSegment ? winningSegment.category.categoryId : null;
+    
     this.startHighlightAnimation();
   }
 
@@ -324,6 +369,7 @@ export class WheelRenderer {
    */
   clearWinnerHighlight(): void {
     this.winningSegmentId = null;
+    this.winningCategoryId = null;
     this.stopHighlightAnimation();
   }
 
@@ -353,6 +399,15 @@ export class WheelRenderer {
   }
 
   /**
+   * Normalizes angle to be between -π and π
+   */
+  private normalizeAngle(angle: number): number {
+    while (angle > Math.PI) angle -= 2 * Math.PI;
+    while (angle <= -Math.PI) angle += 2 * Math.PI;
+    return angle;
+  }
+
+  /**
    * Lightens a hex color by a given factor
    */
   private lightenColor(hex: string, factor: number): string {
@@ -367,6 +422,30 @@ export class WheelRenderer {
     const newB = Math.min(255, Math.floor(b + (255 - b) * factor));
     
     return `rgb(${newR}, ${newG}, ${newB})`;
+  }
+
+  /**
+   * Gets the segment that is currently under the needle (top of wheel)
+   */
+  getSegmentUnderNeedle(): WheelSegment | null {
+    const currentAngle = this.getCurrentAngle();
+    const needleAngle = -Math.PI / 2; // Top of the wheel (12 o'clock position)
+    
+    // Find which segment is at the needle position
+    const segmentAtNeedle = this.segments.find(segment => {
+      const adjustedStartAngle = this.normalizeAngle(segment.startAngle + currentAngle);
+      const adjustedEndAngle = this.normalizeAngle(segment.endAngle + currentAngle);
+      const normalizedNeedleAngle = this.normalizeAngle(needleAngle);
+      
+      // Handle wrap-around case
+      if (adjustedStartAngle > adjustedEndAngle) {
+        return normalizedNeedleAngle >= adjustedStartAngle || normalizedNeedleAngle <= adjustedEndAngle;
+      } else {
+        return normalizedNeedleAngle >= adjustedStartAngle && normalizedNeedleAngle <= adjustedEndAngle;
+      }
+    });
+    
+    return segmentAtNeedle || null;
   }
 
   /**

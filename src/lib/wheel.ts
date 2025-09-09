@@ -13,7 +13,7 @@ export class WheelEngine {
   /**
    * Creates a new play session for a gallery
    */
-  createPlaySession(gallery: Gallery): PlaySession {
+  async createPlaySession(gallery: Gallery): Promise<PlaySession> {
     const currentChances = new Map<string, number>();
     const originalChances = new Map<string, number>();
     
@@ -23,11 +23,15 @@ export class WheelEngine {
       originalChances.set(photo.photoId, photo.chance);
     });
     
+    // Generate the wheel segments once for the entire session
+    const wheelSegments = await this.generateInitialWheelSegments(gallery, originalChances);
+    
     return {
       galleryId: gallery.galleryId,
       spinMode: gallery.spinMode,
       currentChances,
-      originalChances
+      originalChances,
+      wheelSegments
     };
   }
 
@@ -46,6 +50,73 @@ export class WheelEngine {
       ...session,
       currentChances: newCurrentChances
     };
+  }
+
+  /**
+   * Generates initial wheel segments once per session (with randomized order)
+   */
+  private async generateInitialWheelSegments(gallery: Gallery, chances: Map<string, number>): Promise<WheelSegment[]> {
+    const segments: WheelSegment[] = [];
+    
+    // Create individual segments for each chance instance
+    const individualSegments: Array<{photoId: string, category: any, photo: Blob}> = [];
+    
+    // Generate individual segments for each photo's chances
+    for (const photo of gallery.photos) {
+      const photoChances = chances.get(photo.photoId) || 0;
+      if (photoChances <= 0) continue;
+      
+      // Find the photo's category
+      const category = gallery.categories.find(c => c.categoryId === photo.categoryId) || {
+        categoryId: 'uncategorized',
+        name: 'Uncategorized', 
+        color: '#cccccc'
+      };
+      
+      // Load photo blob
+      const photoBlob = await this.storage.getPhoto(photo.photoId);
+      if (!photoBlob) {
+        console.warn(`Failed to load photo blob for photoId: ${photo.photoId}`);
+        continue;
+      }
+      
+      // Create one segment for each chance
+      for (let i = 0; i < photoChances; i++) {
+        individualSegments.push({
+          photoId: photo.photoId,
+          category,
+          photo: photoBlob
+        });
+      }
+    }
+    
+    if (individualSegments.length === 0) {
+      return segments; // Empty wheel
+    }
+    
+    // Randomize the order of all segments ONCE
+    const shuffledSegments = [...individualSegments].sort(() => Math.random() - 0.5);
+    
+    // Calculate equal angles for each segment
+    const segmentAngle = (2 * Math.PI) / shuffledSegments.length;
+    let currentAngle = 0;
+    
+    // Create wheel segments with equal sizes
+    for (const segmentData of shuffledSegments) {
+      segments.push({
+        photoId: segmentData.photoId,
+        photo: segmentData.photo,
+        category: segmentData.category,
+        chance: 1, // Each segment represents 1 chance
+        startAngle: currentAngle,
+        endAngle: currentAngle + segmentAngle,
+        normalizedChance: 1 / shuffledSegments.length
+      });
+      
+      currentAngle += segmentAngle;
+    }
+    
+    return segments;
   }
 
   /**
@@ -113,71 +184,40 @@ export class WheelEngine {
   }
 
   /**
-   * Generates wheel segments for rendering
-   * Maps photos to visual segments with angles based on current chances
+   * Gets current wheel segments for rendering (filters out consumed segments)
    */
-  async generateWheelSegments(session: PlaySession, gallery: Gallery): Promise<WheelSegment[]> {
-    const segments: WheelSegment[] = [];
+  getCurrentWheelSegments(session: PlaySession): WheelSegment[] {
+    if (session.spinMode === 'static') {
+      // In static mode, all segments are always available
+      return session.wheelSegments;
+    }
     
-    // Create individual segments for each chance instance
-    const individualSegments: Array<{photoId: string, category: any, photo: Blob}> = [];
+    // In consume mode, filter out consumed segments
+    const activeSegments: WheelSegment[] = [];
+    const consumedCounts = new Map<string, number>();
     
-    // Generate individual segments for each photo's chances
-    for (const photo of gallery.photos) {
-      const currentChance = session.currentChances.get(photo.photoId) || 0;
-      if (currentChance <= 0) continue;
-      
-      // Find the photo's category
-      const category = gallery.categories.find(c => c.categoryId === photo.categoryId) || {
-        categoryId: 'uncategorized',
-        name: 'Uncategorized', 
-        color: '#cccccc'
-      };
-      
-      // Load photo blob
-      const photoBlob = await this.storage.getPhoto(photo.photoId);
-      if (!photoBlob) {
-        console.warn(`Failed to load photo blob for photoId: ${photo.photoId}`);
-        continue;
+    // Calculate how many segments each photo has consumed
+    session.originalChances.forEach((original, photoId) => {
+      const current = session.currentChances.get(photoId) || 0;
+      const consumed = original - current;
+      if (consumed > 0) {
+        consumedCounts.set(photoId, consumed);
       }
+    });
+    
+    // Filter segments based on consumed amounts
+    for (const segment of session.wheelSegments) {
+      const photoConsumed = consumedCounts.get(segment.photoId) || 0;
+      const photoSegments = session.wheelSegments.filter(s => s.photoId === segment.photoId);
+      const segmentIndex = photoSegments.indexOf(segment);
       
-      // Create one segment for each chance
-      for (let i = 0; i < currentChance; i++) {
-        individualSegments.push({
-          photoId: photo.photoId,
-          category,
-          photo: photoBlob
-        });
+      // Keep segment if it hasn't been consumed yet
+      if (segmentIndex >= photoConsumed) {
+        activeSegments.push(segment);
       }
     }
     
-    if (individualSegments.length === 0) {
-      return segments; // Empty wheel
-    }
-    
-    // Randomize the order of all segments
-    const shuffledSegments = [...individualSegments].sort(() => Math.random() - 0.5);
-    
-    // Calculate equal angles for each segment
-    const segmentAngle = (2 * Math.PI) / shuffledSegments.length;
-    let currentAngle = 0;
-    
-    // Create wheel segments with equal sizes
-    for (const segmentData of shuffledSegments) {
-      segments.push({
-        photoId: segmentData.photoId,
-        photo: segmentData.photo,
-        category: segmentData.category,
-        chance: 1, // Each segment represents 1 chance
-        startAngle: currentAngle,
-        endAngle: currentAngle + segmentAngle,
-        normalizedChance: 1 / shuffledSegments.length
-      });
-      
-      currentAngle += segmentAngle;
-    }
-    
-    return segments;
+    return activeSegments;
   }
 
   /**
