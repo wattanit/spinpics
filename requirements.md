@@ -1,7 +1,7 @@
 # Requirement Specification: Photo Wheel Spinner PWA
 
-  - **Version:** 1.0
-  - **Date:** September 8, 2025
+  - **Version:** 1.1
+  - **Date:** September 9, 2025
 
 ## 1\. Introduction & Overview
 
@@ -120,9 +120,49 @@ The data for a single gallery will be structured as a JSON object in Local Stora
 }
 ```
 
-## 6\. Future Enhancements (Post-V1.0)
+## 6\. Version 1.1 Features
+
+### 6.1. Photo Lightbox Feature ✅ COMPLETED
+
+  - **FR6.1:** ✅ As a user, after winning a photo in a spin, I want to click on the winning photo to open it in a lightbox modal with a larger view.
+  - **FR6.2:** ✅ As a user, within the lightbox, I want a download button to save the photo to my device.
+  - **FR6.3:** ✅ As a user, I want to close the lightbox by clicking outside it, pressing the escape key, or clicking a close button.
+
+**Implementation Details:**
+- Dedicated lightbox overlay system separate from other modals
+- Full-size photo display with dark background
+- Download functionality using blob URLs with automatic filename generation
+- Multiple close methods: ESC key, outside click, close button
+- Mobile-responsive design with optimized photo sizing
+- Proper resource management with automatic cleanup of object URLs
+
+### 6.2. Gallery Cover Photo Selection
+
+  - **FR7.1:** As a user, I want to select a cover photo for each gallery from the photos within that gallery.
+  - **FR7.2:** As a user, I want to see the cover photo displayed on each gallery card in the home screen gallery list.
+  - **FR7.3:** As a user, I want the system to automatically use the first uploaded photo as the default cover if no cover is explicitly selected.
+  - **FR7.4:** As a user, I want to change the gallery cover photo through the gallery settings tab.
+
+### 6.3. Data Model Updates for V1.1
+
+The Gallery interface will be extended to include:
+
+```typescript
+interface Gallery {
+  galleryId: string;
+  name: string;
+  spinMode: SpinMode;
+  categories: Category[];
+  photos: Photo[];
+  coverPhotoId?: string; // New field for v1.1
+}
+```
+
+## 7\. Future Enhancements (Post-V1.1)
 
   - Sound Effects for wheel spinning and winning.
   - A "Collection Tracker" to show which prizes have been won in a "Consume" mode session.
   - An "Export/Import Gallery" feature to allow users to share their creations.
   - Advanced wheel appearance customization options.
+  - Photo editing capabilities within the app (crop, resize, filters).
+  - Animated transitions between screens and modals.

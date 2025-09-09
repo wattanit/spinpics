@@ -964,7 +964,7 @@ export class App {
       resultContainer.innerHTML = `
         <div class="result-content">
           <h3>🎉 Winner!</h3>
-          <div class="winning-photo" style="border-color: ${winningCategory?.color || '#ccc'}">
+          <div class="winning-photo" style="border-color: ${winningCategory?.color || '#ccc'}; cursor: pointer;" title="Click to view full size">
             <img src="${imageUrl}" alt="Winning photo">
           </div>
           <div class="result-info">
@@ -978,6 +978,14 @@ export class App {
       `;
       
       resultContainer.style.display = 'block';
+
+      // Add click handler to winning photo for lightbox
+      const winningPhotoElement = resultContainer.querySelector('.winning-photo');
+      if (winningPhotoElement) {
+        winningPhotoElement.addEventListener('click', () => {
+          this.openLightbox(photoBlob, winningPhoto.photoId);
+        });
+      }
       
       // Clean up the URL object after some time
       setTimeout(() => {
@@ -1009,5 +1017,97 @@ export class App {
     await this.renderWheel();
     
     console.log('Session reset completed');
+  }
+
+  // Lightbox functionality
+  private openLightbox(photoBlob: Blob, photoId: string): void {
+    const lightboxOverlay = document.getElementById('photo-lightbox-overlay');
+    const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
+    const downloadBtn = document.getElementById('download-photo-btn');
+
+    if (!lightboxOverlay || !lightboxImage || !downloadBtn) {
+      console.error('Lightbox elements not found');
+      return;
+    }
+
+    // Create object URL for the photo
+    const imageUrl = URL.createObjectURL(photoBlob);
+    
+    // Set the image source
+    lightboxImage.src = imageUrl;
+    
+    // Setup download functionality
+    downloadBtn.onclick = () => this.downloadPhoto(photoBlob, photoId);
+    
+    // Show the lightbox
+    lightboxOverlay.classList.add('active');
+    
+    // Store the URL for cleanup
+    lightboxImage.dataset.objectUrl = imageUrl;
+    
+    // Add event listeners for closing
+    this.setupLightboxCloseHandlers();
+  }
+
+  private setupLightboxCloseHandlers(): void {
+    const lightboxOverlay = document.getElementById('photo-lightbox-overlay');
+    const lightboxModal = document.getElementById('photo-lightbox-modal');
+    const lightboxClose = lightboxModal?.querySelector('.lightbox-close');
+
+    if (!lightboxOverlay || !lightboxModal || !lightboxClose) return;
+
+    // Close button click
+    lightboxClose.addEventListener('click', () => this.closeLightbox(), { once: true });
+    
+    // Click outside modal to close
+    lightboxOverlay.addEventListener('click', (e) => {
+      if (e.target === lightboxOverlay) {
+        this.closeLightbox();
+      }
+    }, { once: true });
+    
+    // Escape key to close
+    const escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.closeLightbox();
+        document.removeEventListener('keydown', escapeHandler);
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+  }
+
+  private closeLightbox(): void {
+    const lightboxOverlay = document.getElementById('photo-lightbox-overlay');
+    const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
+
+    if (lightboxOverlay) {
+      lightboxOverlay.classList.remove('active');
+      
+      // Clean up object URL
+      if (lightboxImage?.dataset.objectUrl) {
+        URL.revokeObjectURL(lightboxImage.dataset.objectUrl);
+        delete lightboxImage.dataset.objectUrl;
+        lightboxImage.src = '';
+      }
+    }
+  }
+
+  private downloadPhoto(photoBlob: Blob, photoId: string): void {
+    try {
+      // Create a download link
+      const downloadUrl = URL.createObjectURL(photoBlob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `spinpics-photo-${photoId}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Failed to download photo:', error);
+      this.showError('Failed to download photo');
+    }
   }
 }

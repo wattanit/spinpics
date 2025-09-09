@@ -127,3 +127,54 @@ Photo {
 - Chrome, Firefox, Safari, Edge (latest versions)
 - Desktop and mobile platforms
 - Full offline functionality
+
+### Version 1.1 Development Plan
+
+#### Phase 6: Photo Lightbox Feature
+- [ ] 6.1 Add lightbox modal HTML structure and CSS styling
+- [ ] 6.2 Implement click handler for winning photos
+- [ ] 6.3 Create photo display with full-size view
+- [ ] 6.4 Add download functionality using blob URLs
+- [ ] 6.5 Implement close handlers (ESC key, outside click, close button)
+
+#### Phase 7: Gallery Cover Photo Selection
+- [ ] 7.1 Update Gallery TypeScript interface with `coverPhotoId?` field
+- [ ] 7.2 Add cover photo selection UI in gallery settings tab
+- [ ] 7.3 Update gallery card display to show cover photos
+- [ ] 7.4 Implement auto-default to first photo logic
+- [ ] 7.5 Update storage operations to handle cover photo field
+
+#### Technical Implementation Details
+
+**Lightbox Modal Structure:**
+```html
+<!-- Photo Lightbox Modal -->
+<div id="photo-lightbox-modal" class="modal lightbox-modal">
+  <div class="lightbox-content">
+    <button class="lightbox-close">&times;</button>
+    <img id="lightbox-image" class="lightbox-photo" alt="Winning photo">
+    <div class="lightbox-controls">
+      <button id="download-photo-btn" class="btn btn-primary">Download</button>
+    </div>
+  </div>
+</div>
+```
+
+**Gallery Interface Update:**
+```typescript
+interface Gallery {
+  galleryId: string;
+  name: string;
+  spinMode: SpinMode;
+  categories: Category[];
+  photos: Photo[];
+  coverPhotoId?: string; // New in v1.1
+}
+```
+
+**Key Implementation Areas:**
+- `src/types/index.ts` - Add coverPhotoId to Gallery interface
+- `index.html` - Add lightbox modal structure
+- `src/style.css` - Add lightbox and gallery cover styles
+- `src/app.ts` - Add lightbox handlers and cover photo logic
+- `src/lib/storage.ts` - Update gallery save/load for cover photos

@@ -49,6 +49,8 @@ This is SpinPics, a Progressive Web Application (PWA) - a pure frontend applicat
 - **Completed Phase 3**: Game Configuration & Core Logic
 - **Completed Phase 4**: Spinning Wheel UI & Animation
 - **Completed Phase 5**: Final Polish & Optimization
+- **Completed Phase 6**: Photo Lightbox Feature (v1.1) ✅
+- **Planned Phase 7**: Gallery Cover Photo Selection (v1.1)
 - **Files Implemented**: 
   - **Project Foundation**: `package.json`, `tsconfig.json`, `vite.config.ts`, `.eslintrc.cjs`, `src/vite-env.d.ts`
   - **UI Structure**: `index.html` - Complete 3-screen layout with modals, play screen, and responsive design
@@ -84,6 +86,8 @@ This is SpinPics, a Progressive Web Application (PWA) - a pure frontend applicat
 2. **Phase 3**: Game logic and configuration (✅ Complete)  
 3. **Phase 4**: Spinning wheel and animations (✅ Complete)
 4. **Phase 5**: Final polish and optimization (✅ Complete)
+5. **Phase 6**: Photo lightbox feature (✅ Complete - v1.1)
+6. **Phase 7**: Gallery cover photo selection (📋 Planned - v1.1)
 
 ### Critical Technical Considerations
 - IndexedDB blob storage implementation for photo management
@@ -167,3 +171,43 @@ This is SpinPics, a Progressive Web Application (PWA) - a pure frontend applicat
 - ✅ **Professional branding** as "SpinPics" with optimized user experience
 - ✅ **Performance optimized** with lightweight bundles and fast build times
 - ✅ **Cross-platform compatibility** with full icon sets and responsive design
+
+## Version 1.1 Development Plan
+
+### Phase 6: Photo Lightbox Feature (✅ Completed)
+- **Objective**: Allow users to view and download winning photos in full size
+- **Key Components**: ✅ All implemented
+  - ✅ Clickable winning photo in result display
+  - ✅ Modal lightbox with full-size photo view
+  - ✅ Download functionality using blob URLs
+  - ✅ Multiple close methods (ESC, outside click, close button)
+- **Files Modified**:
+  - ✅ `index.html` - Added dedicated lightbox modal structure with separate overlay
+  - ✅ `src/style.css` - Added lightbox styling with mobile responsiveness
+  - ✅ `src/app.ts` - Implemented complete lightbox event handlers and download functionality
+- **Implementation Highlights**:
+  - Separate lightbox overlay system to avoid modal conflicts
+  - Proper resource management with automatic cleanup
+  - Mobile-first responsive design
+  - Professional download experience with automatic filename generation
+
+### Phase 7: Gallery Cover Photo Selection (📋 Planned)
+- **Objective**: Allow users to set and display cover photos for galleries
+- **Key Components**:
+  - Gallery interface extension with `coverPhotoId?` field
+  - Cover photo selection UI in gallery settings
+  - Gallery card display with cover photos
+  - Auto-default to first photo logic
+- **Files to Modify**:
+  - `src/types/index.ts` - Update Gallery interface
+  - `index.html` - Add cover photo selection UI
+  - `src/style.css` - Add gallery cover photo styles
+  - `src/app.ts` - Implement cover photo logic
+  - `src/lib/storage.ts` - Update storage operations
+
+### Implementation Guidelines for v1.1
+- Maintain existing PWA functionality and performance
+- Follow established code patterns and TypeScript conventions
+- Ensure mobile-first responsive design
+- Test offline functionality remains intact
+- Keep bundle size optimization in mind (~53KB target)
