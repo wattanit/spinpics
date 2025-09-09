@@ -49,31 +49,6 @@ export class WheelRenderer {
     this.draw();
   }
 
-  /**
-   * Preloads all segment images for smooth animation
-   */
-  private async preloadImages(): Promise<void> {
-    const imagePromises = this.segments.map(async (segment) => {
-      if (this.imageCache.has(segment.photoId)) {
-        return; // Already cached
-      }
-
-      return new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          this.imageCache.set(segment.photoId, img);
-          resolve();
-        };
-        img.onerror = () => {
-          console.error('Failed to load image for segment:', segment.photoId);
-          resolve(); // Continue even if image fails
-        };
-        img.src = URL.createObjectURL(segment.photo);
-      });
-    });
-
-    await Promise.all(imagePromises);
-  }
 
   /**
    * Draws the wheel at the current rotation angle
@@ -98,7 +73,7 @@ export class WheelRenderer {
       const isWinningCategory = this.winningCategoryId && segment.category.categoryId === this.winningCategoryId;
       const isWinning = isWinningSegment || isWinningCategory;
       
-      this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning);
+      this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning || false);
     });
 
     // Draw center circle
@@ -150,46 +125,6 @@ export class WheelRenderer {
     this.ctx.restore();
   }
 
-  /**
-   * Draws photo image within segment bounds
-   */
-  private drawSegmentImage(
-    image: HTMLImageElement,
-    segment: WheelSegment,
-    centerX: number,
-    centerY: number,
-    radius: number,
-    rotation: number,
-    isWinning: boolean = false
-  ): void {
-    const midAngle = (segment.startAngle + segment.endAngle) / 2 + rotation;
-    const imageRadius = radius * 0.7; // Image positioned at 70% of radius
-    
-    const imageX = centerX + Math.cos(midAngle) * imageRadius;
-    const imageY = centerY + Math.sin(midAngle) * imageRadius;
-    
-    const baseImageSize = Math.min(60, radius * segment.normalizedChance * 2);
-    const imageSize = isWinning ? baseImageSize * 1.2 : baseImageSize;
-    
-    this.ctx.save();
-    this.ctx.translate(imageX, imageY);
-    this.ctx.rotate(midAngle + Math.PI / 2); // Rotate image to face outward
-    
-    // Draw image with circular clipping
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, imageSize / 2, 0, Math.PI * 2);
-    this.ctx.clip();
-    
-    this.ctx.drawImage(
-      image,
-      -imageSize / 2,
-      -imageSize / 2,
-      imageSize,
-      imageSize
-    );
-    
-    this.ctx.restore();
-  }
 
   /**
    * Draws center circle

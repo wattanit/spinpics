@@ -5,7 +5,7 @@ import { App } from './app';
 document.addEventListener('DOMContentLoaded', () => {
   const app = new App();
   // Make app globally available for onclick handlers
-  (window as any).app = app;
+  (window as { app?: App }).app = app;
   app.initialize();
 });
 

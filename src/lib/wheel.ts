@@ -1,4 +1,4 @@
-import { Gallery, Photo, PlaySession, WheelSegment } from '../types/index.js';
+import { Gallery, Photo, PlaySession, WheelSegment, Category } from '../types/index.js';
 import { storage } from '../lib/storage.js';
 
 type StorageManager = typeof storage;
@@ -65,7 +65,7 @@ export class WheelEngine {
     const segments: WheelSegment[] = [];
     
     // Create individual segments for each chance instance
-    const individualSegments: Array<{photoId: string, category: any, photo: Blob}> = [];
+    const individualSegments: Array<{photoId: string, category: Category, photo: Blob}> = [];
     
     // Generate individual segments for each photo's chances
     for (const photo of gallery.photos) {

@@ -1,4 +1,4 @@
-import type { AppState, Gallery } from './types';
+import type { AppState, Gallery, Photo, Category } from './types';
 import { storage } from './lib/storage';
 import { WheelEngine } from './lib/wheel';
 import { WheelRenderer } from './lib/animation';
@@ -899,14 +899,16 @@ export class App {
       // Highlight the winning segment
       this.wheelRenderer.highlightWinner(winningPhotoId);
 
-      // Find winning photo and category for display
+      // Find winning photo and get category from segment
       const winningPhoto = this.state.currentGallery.photos.find(p => p.photoId === winningPhotoId);
-      const winningCategory = this.state.currentGallery.categories.find(c => c.categoryId === winningPhoto?.categoryId);
-
+      
       if (!winningPhoto) {
         this.showError('Error finding winning photo');
         return;
       }
+
+      // Use category directly from the winning segment (guaranteed to exist)
+      const winningCategory = winningSegment.category;
 
       // Update session state for consume mode  
       this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningPhotoId);
@@ -945,7 +947,7 @@ export class App {
   }
 
 
-  private async displaySpinResult(winningPhoto: any, winningCategory: any): Promise<void> {
+  private async displaySpinResult(winningPhoto: Photo, winningCategory: Category): Promise<void> {
     const resultContainer = document.getElementById('spin-result');
     if (!resultContainer) return;
 

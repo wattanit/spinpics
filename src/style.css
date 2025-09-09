@@ -942,6 +942,14 @@ body {
   }
   
   .winning-photo {
-    max-width: 200px;
+    max-width: 250px;
+  }
+  
+  .photo-preview {
+    height: 200px;
+  }
+  
+  .photo-preview img {
+    object-fit: contain;
   }
 }
