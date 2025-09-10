@@ -401,6 +401,10 @@ export class App {
     const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
     if (spinModeSelect) spinModeSelect.value = gallery.spinMode;
 
+    // Populate double spin toggle
+    const doubleSpinToggle = document.getElementById('double-spin-toggle') as HTMLInputElement;
+    if (doubleSpinToggle) doubleSpinToggle.checked = gallery.doubleSpinEnabled || false;
+
     // Populate cover photo selection
     this.populateCoverPhotoSelection(gallery);
 
@@ -882,10 +886,12 @@ export class App {
     const nameInput = document.getElementById('gallery-name-input') as HTMLInputElement;
     const spinModeSelect = document.getElementById('spin-mode-select') as HTMLSelectElement;
     const coverPhotoSelect = document.getElementById('cover-photo-select') as HTMLSelectElement;
+    const doubleSpinToggle = document.getElementById('double-spin-toggle') as HTMLInputElement;
     
     const name = nameInput?.value?.trim();
     const spinMode = spinModeSelect?.value as 'static' | 'consume';
     const coverPhotoId = coverPhotoSelect?.value || undefined;
+    const doubleSpinEnabled = doubleSpinToggle?.checked || false;
 
     if (!name) {
       this.showError('Please enter a gallery name');
@@ -906,6 +912,7 @@ export class App {
       this.state.currentGallery.name = name;
       this.state.currentGallery.spinMode = spinMode;
       this.state.currentGallery.coverPhotoId = coverPhotoId;
+      this.state.currentGallery.doubleSpinEnabled = doubleSpinEnabled;
 
       await storage.saveGallery(this.state.currentGallery);
       
@@ -1041,8 +1048,24 @@ export class App {
   private clearPlayResults(): void {
     const resultContainer = document.getElementById('spin-result');
     if (resultContainer) {
-      resultContainer.innerHTML = '';
       resultContainer.style.display = 'none';
+      
+      // Clear individual photo containers instead of removing entire HTML structure
+      const photo1 = document.getElementById('winning-photo-1');
+      const photo2 = document.getElementById('winning-photo-2');
+      
+      if (photo1) {
+        photo1.innerHTML = '';
+        photo1.style.display = 'none';
+      }
+      if (photo2) {
+        photo2.innerHTML = '';
+        photo2.style.display = 'none';
+      }
+      
+      // Reset title
+      const titleElement = document.getElementById('result-title');
+      if (titleElement) titleElement.textContent = 'Winner!';
     }
     
     // Clear winner highlight
@@ -1057,6 +1080,16 @@ export class App {
       return;
     }
 
+    const isDoubleSpin = this.state.currentGallery.doubleSpinEnabled || false;
+
+    if (isDoubleSpin) {
+      await this.performDoubleSpin();
+    } else {
+      await this.performSingleSpin();
+    }
+  }
+
+  private async performSingleSpin(): Promise<void> {
     try {
       // Disable spin button during animation
       const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
@@ -1069,7 +1102,7 @@ export class App {
       this.wheelRenderer.clearWinnerHighlight();
 
       // Update wheel for next spin (remove consumed segments in consume mode)
-      this.state.playSession = this.wheelEngine.updateWheelForNextSpin(this.state.playSession);
+      this.state.playSession = this.wheelEngine.updateWheelForNextSpin(this.state.playSession!);
 
       // Get current wheel segments after cleanup
       const segments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
@@ -1082,81 +1115,230 @@ export class App {
         return;
       }
 
-      // Generate random spin (2-5 full rotations + random angle)
-      const baseRotations = (Math.random() * 3 + 2) * Math.PI * 2; // 2-5 full rotations
-      const randomAngle = Math.random() * Math.PI * 2; // Random final position
+      // Generate random spin
+      const baseRotations = (Math.random() * 3 + 2) * Math.PI * 2;
+      const randomAngle = Math.random() * Math.PI * 2;
       const targetAngle = baseRotations + randomAngle;
 
       // Perform wheel spin animation
       await this.wheelRenderer.startSpin(targetAngle, 3000);
 
-      // Determine winner based on which segment ended up under the needle
+      // Determine winner
       const winningSegment = this.wheelRenderer.getSegmentUnderNeedle();
       if (!winningSegment) {
-        this.showError('Error determining winning segment - no segments available');
-        // Re-enable spin button
-        const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
-        if (spinBtn) {
-          spinBtn.disabled = false;
-          spinBtn.textContent = 'Spin';
-        }
+        this.showError('Error determining winning segment');
         return;
       }
 
-      const winningPhotoId = winningSegment.photoId;
-
-      // Highlight the winning segment
-      this.wheelRenderer.highlightWinner(winningPhotoId);
-
-      // Find winning photo and get category from segment
-      const winningPhoto = this.state.currentGallery.photos.find(p => p.photoId === winningPhotoId);
-      
+      const winningPhoto = this.state.currentGallery!.photos.find(p => p.photoId === winningSegment.photoId);
       if (!winningPhoto) {
         this.showError('Error finding winning photo');
         return;
       }
 
-      // Use category directly from the winning segment (guaranteed to exist)
-      const winningCategory = winningSegment.category;
+      // Highlight winner
+      this.wheelRenderer.highlightWinner(winningSegment.photoId);
 
-      // Update session state for consume mode  
-      this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningPhotoId);
+      // Update session state
+      this.state.playSession = this.wheelEngine.updateSessionAfterSpin(this.state.playSession, winningSegment.photoId);
       
-      // Mark the specific winning segment for removal on next spin (consume mode only)
-      // But don't consume if it would leave the game unplayable
+      // Handle consume mode
       if (this.state.playSession.spinMode === 'consume') {
         const currentSegments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
-        
-        // Only consume the segment if there will be more than 1 segment remaining
         if (currentSegments.length > 1) {
           const winningSegmentId = `${winningSegment.photoId}_${winningSegment.startAngle}`;
           this.state.playSession = this.wheelEngine.markSegmentAsConsumed(this.state.playSession, winningSegmentId);
-        } else {
-          console.log('Last segment - not consuming to keep game playable');
         }
       }
 
       // Display result
-      await this.displaySpinResult(winningPhoto, winningCategory);
-
-      // Update session stats but do NOT re-render wheel yet (keep winning segment visible)
+      await this.displaySingleSpinResult(winningPhoto, winningSegment.category);
       this.updateSessionStats();
 
     } catch (error) {
-      console.error('Error during spin:', error);
+      console.error('Error during single spin:', error);
       this.showError('Error during spin');
     } finally {
       // Re-enable spin button
       const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
       if (spinBtn) {
         spinBtn.disabled = false;
-        spinBtn.textContent = 'Spin';
+        spinBtn.textContent = 'SPIN!';
+      }
+    }
+  }
+
+  private async performDoubleSpin(): Promise<void> {
+    try {
+      // Disable spin button during animation
+      const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+      if (spinBtn) {
+        spinBtn.disabled = true;
+        spinBtn.textContent = 'Double Spinning...';
+      }
+
+      // Clear any previous winning animation
+      this.wheelRenderer.clearWinnerHighlight();
+
+      // Update wheel for next spin
+      this.state.playSession = this.wheelEngine.updateWheelForNextSpin(this.state.playSession!);
+
+      // Get current wheel segments
+      const segments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
+      await this.renderWheel();
+
+      if (segments.length === 0) {
+        this.showError('No eligible photos to spin! All chances may be consumed.');
+        return;
+      }
+
+      // First spin - random animation
+      const firstTarget = (Math.random() * 3 + 2) * Math.PI * 2 + Math.random() * Math.PI * 2;
+      await this.wheelRenderer.startSpin(firstTarget, 3000);
+
+      // Get first winner based on where wheel landed
+      const firstWinningSegment = this.wheelRenderer.getSegmentUnderNeedle();
+      if (!firstWinningSegment) {
+        this.showError('Error determining first winner');
+        return;
+      }
+
+      const firstWinningPhoto = this.state.currentGallery!.photos.find(p => p.photoId === firstWinningSegment.photoId);
+      if (!firstWinningPhoto) {
+        this.showError('Error finding first winning photo');
+        return;
+      }
+
+      // Highlight first winner briefly
+      this.wheelRenderer.highlightWinner(firstWinningSegment.photoId);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Show first result
+      this.wheelRenderer.clearWinnerHighlight();
+
+      // Prepare photos for second spin - try to select from different category
+      const firstWinnerCategoryId = firstWinningPhoto.categoryId;
+      const eligiblePhotos = this.state.currentGallery!.photos.filter(photo => {
+        const currentChance = this.state.playSession?.currentChances.get(photo.photoId) || 0;
+        return currentChance > 0;
+      });
+
+      // Group photos by category for category-aware selection
+      const photosByCategory = new Map<string, Photo[]>();
+      eligiblePhotos.forEach(photo => {
+        if (!photosByCategory.has(photo.categoryId)) {
+          photosByCategory.set(photo.categoryId, []);
+        }
+        photosByCategory.get(photo.categoryId)!.push(photo);
+      });
+
+      const availableCategories = Array.from(photosByCategory.keys());
+      const otherCategories = availableCategories.filter(cat => cat !== firstWinnerCategoryId);
+
+      // For second spin, prefer other categories but allow same category if needed
+      let secondSpinPhotos: Photo[];
+      if (otherCategories.length > 0) {
+        // Select from different categories
+        secondSpinPhotos = [];
+        otherCategories.forEach(categoryId => {
+          const categoryPhotos = photosByCategory.get(categoryId) || [];
+          secondSpinPhotos.push(...categoryPhotos);
+        });
+      } else {
+        // Only one category available, select from same category (excluding first winner)
+        secondSpinPhotos = eligiblePhotos.filter(photo => photo.photoId !== firstWinningSegment.photoId);
+      }
+
+      if (secondSpinPhotos.length === 0) {
+        // Only one photo available total, show single result
+        const winningPhotos = [firstWinningPhoto];
+        const winningPhotoIds = [firstWinningSegment.photoId];
+        
+        // Update session state
+        this.state.playSession = this.wheelEngine.updateSessionAfterDoubleSpin(this.state.playSession, winningPhotoIds);
+        
+        // Display result
+        await this.displayDoubleSpinResult(winningPhotos);
+        this.updateSessionStats();
+        return;
+      }
+
+      // Create a temporary play session with only second spin photos for authentic wheel behavior
+      const tempSession = { ...this.state.playSession };
+      const tempChances = new Map(this.state.playSession.currentChances);
+      
+      // Set chances to 0 for photos not in the second spin selection
+      this.state.currentGallery!.photos.forEach(photo => {
+        if (!secondSpinPhotos.find(sp => sp.photoId === photo.photoId)) {
+          tempChances.set(photo.photoId, 0);
+        }
+      });
+      
+      tempSession.currentChances = tempChances;
+      
+      // Generate new wheel segments for second spin with only eligible photos
+      tempSession.wheelSegments = await this.wheelEngine.generateWheelSegments(this.state.currentGallery!, tempChances);
+      
+      // Update the wheel renderer with the new segments
+      await this.wheelRenderer.updateSegments(this.wheelEngine.getCurrentWheelSegments(tempSession));
+
+      // Second spin animation - let it land naturally on the filtered wheel
+      const secondTarget = (Math.random() * 3 + 2) * Math.PI * 2 + Math.random() * Math.PI * 2;
+      await this.wheelRenderer.startSpin(secondTarget, 3000);
+
+      // Get the actual winner from where the wheel landed
+      const secondWinningSegment = this.wheelRenderer.getSegmentUnderNeedle();
+      if (!secondWinningSegment) {
+        this.showError('Error determining second winner from wheel');
+        return;
+      }
+
+      const secondWinningPhoto = this.state.currentGallery!.photos.find(p => p.photoId === secondWinningSegment.photoId);
+      if (!secondWinningPhoto) {
+        this.showError('Error finding second winning photo');
+        return;
+      }
+
+      const winningPhotos = [firstWinningPhoto, secondWinningPhoto];
+      const winningPhotoIds = [firstWinningSegment.photoId, secondWinningSegment.photoId];
+
+      // Highlight both winners
+      this.wheelRenderer.highlightDoubleWinners(winningPhotoIds);
+
+      // Update session state for consume mode
+      this.state.playSession = this.wheelEngine.updateSessionAfterDoubleSpin(this.state.playSession, winningPhotoIds);
+
+      // Handle consume mode segment marking (using original segments)
+      if (this.state.playSession.spinMode === 'consume') {
+        const originalSegments = this.wheelEngine.getCurrentWheelSegments(this.state.playSession);
+        
+        // Mark winning segments as consumed if safe to do so
+        for (const photoId of winningPhotoIds) {
+          const winningSegment = segments.find(s => s.photoId === photoId);
+          if (winningSegment && originalSegments.length > winningPhotoIds.length) {
+            const segmentId = `${winningSegment.photoId}_${winningSegment.startAngle}`;
+            this.state.playSession = this.wheelEngine.markSegmentAsConsumed(this.state.playSession, segmentId);
+          }
+        }
+      }
+
+      // Display results
+      await this.displayDoubleSpinResult(winningPhotos);
+      this.updateSessionStats();
+
+    } catch (error) {
+      console.error('Error during double spin:', error);
+      this.showError('Error during double spin');
+    } finally {
+      // Re-enable spin button
+      const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+      if (spinBtn) {
+        spinBtn.disabled = false;
+        spinBtn.textContent = 'SPIN!';
       }
     }
   }
 
 
-  private async displaySpinResult(winningPhoto: Photo, winningCategory: Category): Promise<void> {
+  private async displaySingleSpinResult(winningPhoto: Photo, winningCategory: Category): Promise<void> {
     const resultContainer = document.getElementById('spin-result');
     if (!resultContainer) return;
 
@@ -1170,12 +1352,16 @@ export class App {
 
       const imageUrl = URL.createObjectURL(photoBlob);
       
-      resultContainer.innerHTML = `
-        <div class="result-content">
-          <h3>🎉 Winner!</h3>
-          <div class="winning-photo" style="border-color: ${winningCategory?.color || '#ccc'}; cursor: pointer;" title="Click to view full size">
-            <img src="${imageUrl}" alt="Winning photo">
-          </div>
+      // Update title and photos
+      const titleElement = document.getElementById('result-title');
+      if (titleElement) titleElement.textContent = '🎉 Winner!';
+
+      const photo1 = document.getElementById('winning-photo-1');
+      const photo2 = document.getElementById('winning-photo-2');
+      
+      if (photo1) {
+        photo1.innerHTML = `
+          <img src="${imageUrl}" alt="Winning photo">
           <div class="result-info">
             <p><strong>Category:</strong> ${winningCategory?.name || 'Uncategorized'}</p>
             <p><strong>Chance:</strong> ${winningPhoto.chance}</p>
@@ -1183,18 +1369,22 @@ export class App {
               `<p><em>Remaining chances: ${(this.state.playSession.currentChances.get(winningPhoto.photoId) || 0)}</em></p>` : ''
             }
           </div>
-        </div>
-      `;
+        `;
+        photo1.style.borderColor = winningCategory?.color || '#ccc';
+        photo1.style.cursor = 'pointer';
+        photo1.title = 'Click to view full size';
+        photo1.style.display = 'block';
+        
+        // Add click handler for lightbox
+        photo1.onclick = () => this.openLightbox(photoBlob, winningPhoto.photoId);
+      }
+      
+      // Hide second photo for single spin
+      if (photo2) {
+        photo2.style.display = 'none';
+      }
       
       resultContainer.style.display = 'block';
-
-      // Add click handler to winning photo for lightbox
-      const winningPhotoElement = resultContainer.querySelector('.winning-photo');
-      if (winningPhotoElement) {
-        winningPhotoElement.addEventListener('click', () => {
-          this.openLightbox(photoBlob, winningPhoto.photoId);
-        });
-      }
       
       // Clean up the URL object after some time
       setTimeout(() => {
@@ -1202,8 +1392,91 @@ export class App {
       }, 10000);
 
     } catch (error) {
-      console.error('Failed to display result:', error);
+      console.error('Failed to display single spin result:', error);
       this.showError('Failed to display result');
+    }
+  }
+
+  private async displayDoubleSpinResult(winningPhotos: Photo[]): Promise<void> {
+    const resultContainer = document.getElementById('spin-result');
+    if (!resultContainer) return;
+
+    try {
+      // Update title
+      const titleElement = document.getElementById('result-title');
+      if (titleElement) titleElement.textContent = '🎉 Double Winners!';
+
+      const photo1Element = document.getElementById('winning-photo-1');
+      const photo2Element = document.getElementById('winning-photo-2');
+      
+      // Display first photo
+      if (winningPhotos[0] && photo1Element) {
+        const photoBlob1 = await storage.getPhoto(winningPhotos[0].photoId);
+        if (photoBlob1) {
+          const imageUrl1 = URL.createObjectURL(photoBlob1);
+          const category1 = this.state.currentGallery!.categories.find(c => c.categoryId === winningPhotos[0].categoryId);
+          
+          photo1Element.innerHTML = `
+            <img src="${imageUrl1}" alt="Winning photo 1">
+            <div class="result-info">
+              <p><strong>Category:</strong> ${category1?.name || 'Uncategorized'}</p>
+              <p><strong>Chance:</strong> ${winningPhotos[0].chance}</p>
+              ${this.state.playSession?.spinMode === 'consume' ? 
+                `<p><em>Remaining: ${(this.state.playSession.currentChances.get(winningPhotos[0].photoId) || 0)}</em></p>` : ''
+              }
+            </div>
+          `;
+          photo1Element.style.borderColor = category1?.color || '#ccc';
+          photo1Element.style.cursor = 'pointer';
+          photo1Element.title = 'Click to view full size';
+          photo1Element.style.display = 'block';
+          
+          // Add click handler for lightbox
+          photo1Element.onclick = () => this.openLightbox(photoBlob1, winningPhotos[0].photoId);
+          
+          // Clean up URL after delay
+          setTimeout(() => URL.revokeObjectURL(imageUrl1), 10000);
+        }
+      }
+
+      // Display second photo if available
+      if (winningPhotos[1] && photo2Element) {
+        const photoBlob2 = await storage.getPhoto(winningPhotos[1].photoId);
+        if (photoBlob2) {
+          const imageUrl2 = URL.createObjectURL(photoBlob2);
+          const category2 = this.state.currentGallery!.categories.find(c => c.categoryId === winningPhotos[1].categoryId);
+          
+          photo2Element.innerHTML = `
+            <img src="${imageUrl2}" alt="Winning photo 2">
+            <div class="result-info">
+              <p><strong>Category:</strong> ${category2?.name || 'Uncategorized'}</p>
+              <p><strong>Chance:</strong> ${winningPhotos[1].chance}</p>
+              ${this.state.playSession?.spinMode === 'consume' ? 
+                `<p><em>Remaining: ${(this.state.playSession.currentChances.get(winningPhotos[1].photoId) || 0)}</em></p>` : ''
+              }
+            </div>
+          `;
+          photo2Element.style.borderColor = category2?.color || '#ccc';
+          photo2Element.style.cursor = 'pointer';
+          photo2Element.title = 'Click to view full size';
+          photo2Element.style.display = 'block';
+          
+          // Add click handler for lightbox
+          photo2Element.onclick = () => this.openLightbox(photoBlob2, winningPhotos[1].photoId);
+          
+          // Clean up URL after delay
+          setTimeout(() => URL.revokeObjectURL(imageUrl2), 10000);
+        }
+      } else if (photo2Element) {
+        // Hide second photo if only one winner
+        photo2Element.style.display = 'none';
+      }
+
+      resultContainer.style.display = 'block';
+
+    } catch (error) {
+      console.error('Failed to display double spin result:', error);
+      this.showError('Failed to display results');
     }
   }
 

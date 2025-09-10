@@ -22,6 +22,7 @@ export interface Gallery {
   categories: Category[];
   photos: Photo[];
   coverPhotoId?: string; // Optional cover photo for gallery display
+  doubleSpinEnabled?: boolean; // Optional double spin mode (v1.2)
 }
 
 // Session state for consume mode

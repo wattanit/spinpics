@@ -87,6 +87,15 @@
                         </select>
                     </div>
                     <div class="settings-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="double-spin-toggle" class="form-checkbox">
+                            <span class="checkbox-text">Double Spin Mode</span>
+                        </label>
+                        <div class="setting-description">
+                            When enabled, the wheel spins twice to select two photos from different categories (when possible)
+                        </div>
+                    </div>
+                    <div class="settings-group">
                         <label for="cover-photo-select">Gallery Cover Photo</label>
                         <select id="cover-photo-select" class="form-select">
                             <option value="">No cover photo</option>
@@ -124,8 +133,11 @@
 
                     <!-- Result Display -->
                     <div id="spin-result" class="result-display" style="display: none;">
-                        <h3>Winner!</h3>
-                        <div id="winning-photo" class="winning-photo"></div>
+                        <h3 id="result-title">Winner!</h3>
+                        <div id="winning-photos" class="winning-photos">
+                            <div id="winning-photo-1" class="winning-photo"></div>
+                            <div id="winning-photo-2" class="winning-photo" style="display: none;"></div>
+                        </div>
                     </div>
                 </div>
 

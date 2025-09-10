@@ -68,12 +68,16 @@ export class WheelRenderer {
     this.segments.forEach((segment) => {
       const segmentId = `${segment.photoId}_${segment.startAngle}`;
       
-      // Highlight if this is the exact winning segment OR if it belongs to the winning category
-      const isWinningSegment = segmentId === this.winningSegmentId || segment.photoId === this.winningSegmentId;
-      const isWinningCategory = this.winningCategoryId && segment.category.categoryId === this.winningCategoryId;
+      // Support multiple winning segments and categories (for double spin)
+      const winningSegmentIds = this.winningSegmentId ? this.winningSegmentId.split(',') : [];
+      const winningCategoryIds = this.winningCategoryId ? this.winningCategoryId.split(',') : [];
+      
+      // Highlight if this is a winning segment OR if it belongs to a winning category
+      const isWinningSegment = winningSegmentIds.includes(segmentId) || winningSegmentIds.includes(segment.photoId);
+      const isWinningCategory = winningCategoryIds.includes(segment.category.categoryId);
       const isWinning = isWinningSegment || isWinningCategory;
       
-      this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning || false);
+      this.drawSegment(segment, centerX, centerY, radius, currentAngle, isWinning);
     });
 
     // Draw center circle
@@ -394,6 +398,64 @@ export class WheelRenderer {
     // Fallback: if we can't find the exact segment, return the first one
     // This can happen due to floating point precision issues
     return segmentAtNeedle || this.segments[0];
+  }
+
+  /**
+   * Performs a double spin with sequential animations
+   * Returns array of winning photo IDs after both spins complete
+   */
+  async startDoubleSpin(firstTargetAngle: number, secondTargetAngle: number, duration: number = 3000): Promise<string[]> {
+    const results: string[] = [];
+    
+    // Clear any existing highlights
+    this.clearWinnerHighlight();
+    
+    // First spin
+    await this.startSpin(firstTargetAngle, duration);
+    const firstWinner = this.getSegmentUnderNeedle();
+    if (firstWinner) {
+      results.push(firstWinner.photoId);
+      // Highlight first winner briefly
+      this.highlightWinner(firstWinner.photoId);
+      await this.delay(1000); // Show first result for 1 second
+      this.clearWinnerHighlight();
+    }
+    
+    // Second spin
+    await this.startSpin(secondTargetAngle, duration);
+    const secondWinner = this.getSegmentUnderNeedle();
+    if (secondWinner) {
+      results.push(secondWinner.photoId);
+    }
+    
+    return results;
+  }
+
+  /**
+   * Highlights multiple winning segments for double spin results
+   */
+  highlightDoubleWinners(winningPhotoIds: string[]): void {
+    // For double spin, we'll highlight the categories of both winning photos
+    const winningCategories = new Set<string>();
+    
+    winningPhotoIds.forEach(photoId => {
+      const segment = this.segments.find(s => s.photoId === photoId);
+      if (segment) {
+        winningCategories.add(segment.category.categoryId);
+      }
+    });
+    
+    // Store multiple winning categories (we'll modify the highlighting logic)
+    this.winningCategoryId = Array.from(winningCategories).join(',');
+    this.winningSegmentId = winningPhotoIds.join(','); // Store multiple photo IDs
+    this.startHighlightAnimation();
+  }
+
+  /**
+   * Utility method for creating delays in async sequences
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

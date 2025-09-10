@@ -59,6 +59,13 @@ export class WheelEngine {
   }
 
   /**
+   * Generates wheel segments for a given gallery and chance distribution
+   */
+  async generateWheelSegments(gallery: Gallery, chances: Map<string, number>): Promise<WheelSegment[]> {
+    return this.generateInitialWheelSegments(gallery, chances);
+  }
+
+  /**
    * Generates initial wheel segments once per session (with randomized order)
    */
   private async generateInitialWheelSegments(gallery: Gallery, chances: Map<string, number>): Promise<WheelSegment[]> {
@@ -312,6 +319,134 @@ export class WheelEngine {
     return {
       isValid: errors.length === 0,
       errors
+    };
+  }
+
+  /**
+   * Performs double spin with category-aware selection
+   * Returns array of 1-2 selected photo IDs (2 when possible, 1 when only one category has eligible photos)
+   */
+  doubleSpinWheel(session: PlaySession, photos: Photo[]): string[] {
+    // Get eligible photos for double spin
+    const eligiblePhotos = photos.filter(photo => {
+      const currentChance = session.currentChances.get(photo.photoId) || 0;
+      return currentChance > 0;
+    });
+    
+    if (eligiblePhotos.length === 0) {
+      return []; // No eligible photos
+    }
+    
+    if (eligiblePhotos.length === 1) {
+      // Only one photo available
+      return [eligiblePhotos[0].photoId];
+    }
+    
+    // Group photos by category
+    const photosByCategory = new Map<string, Photo[]>();
+    eligiblePhotos.forEach(photo => {
+      if (!photosByCategory.has(photo.categoryId)) {
+        photosByCategory.set(photo.categoryId, []);
+      }
+      photosByCategory.get(photo.categoryId)!.push(photo);
+    });
+    
+    const availableCategories = Array.from(photosByCategory.keys());
+    
+    // First spin - select from all eligible photos
+    const firstWinner = this.spinWheel(session, eligiblePhotos);
+    if (!firstWinner) return [];
+    
+    const results = [firstWinner];
+    
+    // Find category of first winner
+    const firstWinnerPhoto = photos.find(p => p.photoId === firstWinner);
+    const firstWinnerCategoryId = firstWinnerPhoto?.categoryId;
+    
+    // Try to select second photo from different category
+    const otherCategories = availableCategories.filter(cat => cat !== firstWinnerCategoryId);
+    
+    if (otherCategories.length > 0) {
+      // Select from different categories
+      const photosFromOtherCategories: Photo[] = [];
+      otherCategories.forEach(categoryId => {
+        const categoryPhotos = photosByCategory.get(categoryId) || [];
+        photosFromOtherCategories.push(...categoryPhotos);
+      });
+      
+      if (photosFromOtherCategories.length > 0) {
+        const secondWinner = this.spinWheelFromPhotos(session, photosFromOtherCategories);
+        if (secondWinner) {
+          results.push(secondWinner);
+        }
+      }
+    } else {
+      // Only one category available, select another photo from same category
+      const sameCategoryPhotos = photosByCategory.get(firstWinnerCategoryId!) || [];
+      const remainingPhotosInSameCategory = sameCategoryPhotos.filter(photo => photo.photoId !== firstWinner);
+      
+      if (remainingPhotosInSameCategory.length > 0) {
+        const secondWinner = this.spinWheelFromPhotos(session, remainingPhotosInSameCategory);
+        if (secondWinner) {
+          results.push(secondWinner);
+        }
+      }
+    }
+    
+    return results;
+  }
+
+  /**
+   * Helper method to perform weighted selection from a specific subset of photos
+   */
+  spinWheelFromPhotos(session: PlaySession, photos: Photo[]): string | null {
+    if (photos.length === 0) return null;
+    
+    // Calculate total weight for the subset
+    const totalWeight = photos.reduce((sum, photo) => {
+      return sum + (session.currentChances.get(photo.photoId) || 0);
+    }, 0);
+    
+    if (totalWeight <= 0) return null;
+    
+    // Generate random number and select
+    const randomValue = Math.random() * totalWeight;
+    let currentWeight = 0;
+    
+    for (const photo of photos) {
+      const photoChance = session.currentChances.get(photo.photoId) || 0;
+      currentWeight += photoChance;
+      
+      if (randomValue <= currentWeight) {
+        return photo.photoId;
+      }
+    }
+    
+    // Fallback
+    return photos[photos.length - 1].photoId;
+  }
+
+
+  /**
+   * Updates session state after a double spin in consume mode
+   * Reduces both winning photos' chances by 1
+   */
+  updateSessionAfterDoubleSpin(session: PlaySession, winningPhotoIds: string[]): PlaySession {
+    if (session.spinMode !== 'consume') {
+      return session; // No changes needed for static mode
+    }
+    
+    const newCurrentChances = new Map(session.currentChances);
+    
+    for (const photoId of winningPhotoIds) {
+      const currentChance = newCurrentChances.get(photoId) || 0;
+      const newChance = Math.max(0, currentChance - 1);
+      newCurrentChances.set(photoId, newChance);
+    }
+    
+    return {
+      ...session,
+      currentChances: newCurrentChances
     };
   }
 
