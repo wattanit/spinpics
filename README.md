@@ -179,12 +179,12 @@ interface Gallery {
 
 ### Version 1.2 Development Plan
 
-#### Phase 8: Edit Category Feature
-- [ ] 8.1 Add edit button to each category in Categories tab
-- [ ] 8.2 Implement category edit modal with pre-populated values
-- [ ] 8.3 Add validation to prevent duplicate category names
-- [ ] 8.4 Update category color and refresh all UI elements
-- [ ] 8.5 Test category editing with photo assignments intact
+#### Phase 8: Edit Category Feature ✅ COMPLETED
+- [x] 8.1 Add edit button to each category in Categories tab
+- [x] 8.2 Implement category edit modal with pre-populated values
+- [x] 8.3 Add validation to prevent duplicate category names
+- [x] 8.4 Update category color and refresh all UI elements
+- [x] 8.5 Test category editing with photo assignments intact
 
 #### Phase 9: Double Spin Mode
 - [ ] 9.1 Add `doubleSpinEnabled` field to Gallery TypeScript interface

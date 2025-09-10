@@ -171,6 +171,24 @@
             </div>
         </div>
 
+        <!-- Edit Category Modal -->
+        <div id="edit-category-modal" class="modal">
+            <div class="modal-header">
+                <h3>Edit Category</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="edit-category-name">Category Name</label>
+                <input type="text" id="edit-category-name" class="form-input" placeholder="e.g., Common, Rare">
+                <label for="edit-category-color">Category Color</label>
+                <input type="color" id="edit-category-color" class="form-color" value="#2196F3">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-edit-category" class="btn btn-text">Cancel</button>
+                <button id="save-edit-category" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- Photo Lightbox Modal (separate overlay) -->

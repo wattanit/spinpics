@@ -10,6 +10,9 @@ export class App {
     playSession: null,
     galleries: []
   };
+  
+  // Track category being edited
+  private editingCategoryId: string | null = null;
   private wheelEngine!: WheelEngine;
   private wheelRenderer!: WheelRenderer;
 
@@ -99,6 +102,15 @@ export class App {
 
     document.getElementById('cancel-new-category')?.addEventListener('click', () => {
       this.hideModal('new-category-modal');
+    });
+
+    // Edit category modal controls
+    document.getElementById('save-edit-category')?.addEventListener('click', () => {
+      this.saveEditCategory();
+    });
+
+    document.getElementById('cancel-edit-category')?.addEventListener('click', () => {
+      this.hideModal('edit-category-modal');
     });
 
     // Gallery tabs
@@ -741,9 +753,92 @@ export class App {
     }
   }
 
-  async editCategory(_categoryId: string): Promise<void> {
-    // TODO: Implement edit category modal/inline editing
-    this.showError('Edit category feature coming soon!');
+  async editCategory(categoryId: string): Promise<void> {
+    if (!this.state.currentGallery) return;
+
+    const category = this.state.currentGallery.categories.find(c => c.categoryId === categoryId);
+    if (!category) {
+      this.showError('Category not found');
+      return;
+    }
+
+    // Store the category being edited
+    this.editingCategoryId = categoryId;
+
+    // Pre-populate the edit modal with current values
+    const nameInput = document.getElementById('edit-category-name') as HTMLInputElement;
+    const colorInput = document.getElementById('edit-category-color') as HTMLInputElement;
+
+    if (nameInput) nameInput.value = category.name;
+    if (colorInput) colorInput.value = category.color;
+
+    // Show the edit modal
+    this.showModal('edit-category-modal');
+  }
+
+  private async saveEditCategory(): Promise<void> {
+    if (!this.state.currentGallery || !this.editingCategoryId) {
+      this.showError('No category selected for editing');
+      return;
+    }
+
+    const nameInput = document.getElementById('edit-category-name') as HTMLInputElement;
+    const colorInput = document.getElementById('edit-category-color') as HTMLInputElement;
+    
+    const name = nameInput?.value?.trim();
+    const color = colorInput?.value;
+
+    if (!name) {
+      this.showError('Please enter a category name');
+      return;
+    }
+
+    // Check for duplicate names (excluding the current category)
+    const existingCategory = this.state.currentGallery.categories.find(c => 
+      c.name.toLowerCase() === name.toLowerCase() && c.categoryId !== this.editingCategoryId
+    );
+    if (existingCategory) {
+      this.showError('A category with this name already exists');
+      return;
+    }
+
+    try {
+      // Find and update the category
+      const categoryIndex = this.state.currentGallery.categories.findIndex(
+        c => c.categoryId === this.editingCategoryId
+      );
+      
+      if (categoryIndex === -1) {
+        this.showError('Category not found');
+        return;
+      }
+
+      // Update the category
+      this.state.currentGallery.categories[categoryIndex] = {
+        ...this.state.currentGallery.categories[categoryIndex],
+        name,
+        color: color || '#2196F3'
+      };
+
+      await storage.saveGallery(this.state.currentGallery);
+      
+      // Update in galleries array
+      const galleryIndex = this.state.galleries.findIndex(g => g.galleryId === this.state.currentGallery!.galleryId);
+      if (galleryIndex >= 0) {
+        this.state.galleries[galleryIndex] = this.state.currentGallery;
+      }
+
+      this.renderCategories();
+      this.renderPhotos(); // Re-render photos to update category colors
+      this.hideModal('edit-category-modal');
+      
+      // Clear editing state
+      this.editingCategoryId = null;
+
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      this.showError('Failed to update category');
+    }
   }
 
   async deleteCategory(categoryId: string): Promise<void> {
