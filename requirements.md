@@ -158,7 +158,63 @@ interface Gallery {
 }
 ```
 
-## 7\. Future Enhancements (Post-V1.1)
+## 7\. Version 1.2 Features
+
+### 7.1. Edit Category Feature
+
+  - **FR8.1:** As a user, I want to edit existing categories in my gallery to update their name and color.
+  - **FR8.2:** As a user, I want to access the edit category functionality through the Categories tab in gallery management.
+  - **FR8.3:** As a user, when I edit a category, I want to see the current name and color pre-populated in the edit form.
+  - **FR8.4:** As a user, I want validation to prevent duplicate category names within the same gallery.
+  - **FR8.5:** As a user, when I update a category's color, I want all photos assigned to that category to immediately reflect the new color in the UI.
+
+### 7.2. Double Spin Mode
+
+  - **FR9.1:** As a user, I want to enable a "Double Spin" mode for each gallery as an additional option that can be combined with either "Static" or "Consume" modes.
+  - **FR9.2:** As a user, when Double Spin mode is enabled, I want the wheel to spin twice automatically in sequence.
+  - **FR9.3:** As a user, I want each spin in Double Spin mode to select photos from different categories whenever possible.
+  - **FR9.4:** As a user, I want both winning photos to be displayed prominently after both spins are complete.
+  - **FR9.5:** As a user playing in Double Spin + Consume mode, I want both winning photos' chances to be reduced for the remainder of the current play session.
+  - **FR9.6:** As a user, if only one category has photos remaining in consume mode, I want the double spin to still work by allowing photos from the same category.
+  - **FR9.7:** As a user, I want clear visual indication when Double Spin mode is active, including appropriate UI labels and spin count feedback.
+
+### 7.3. Data Model Updates for V1.2
+
+The Gallery interface will be extended to include:
+
+```typescript
+interface Gallery {
+  galleryId: string;
+  name: string;
+  spinMode: SpinMode; // Remains 'static' | 'consume'
+  categories: Category[];
+  photos: Photo[];
+  coverPhotoId?: string;
+  doubleSpinEnabled?: boolean; // New field for v1.2
+}
+
+// SpinMode remains unchanged
+type SpinMode = 'static' | 'consume';
+```
+
+### 7.4. Technical Implementation Notes
+
+#### Edit Category Feature
+- Reuse existing category creation modal with pre-populated values
+- Implement real-time color updates across all UI elements
+- Add category validation to prevent naming conflicts
+- Maintain photo-category associations during edits
+
+#### Double Spin Mode
+- Add `doubleSpinEnabled` boolean field to Gallery interface
+- Extend wheel animation system to support sequential spins
+- Implement category-aware selection algorithm for diverse results
+- Update result display to accommodate two winning photos
+- Enhance session state management for dual consume tracking
+- Add fallback logic for single-category scenarios
+- Update settings UI to include double spin toggle alongside spin mode selection
+
+## 8\. Future Enhancements (Post-V1.2)
 
   - Sound Effects for wheel spinning and winning.
   - A "Collection Tracker" to show which prizes have been won in a "Consume" mode session.

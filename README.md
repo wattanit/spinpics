@@ -13,6 +13,7 @@ A progressive web application for creating customizable spinning wheel games wit
 - **Two Game Modes**:
   - **Static Mode**: Chances stay the same for every spin
   - **Consume Mode**: Winning photos reduce their chances over time
+- **Double Spin Option**: Can be enabled with either mode for dual photo selection
 - **Mobile-First Design** - Optimized for touch devices
 - **Fast & Lightweight** - Only ~53KB total bundle size
 
@@ -32,7 +33,8 @@ A progressive web application for creating customizable spinning wheel games wit
 4. **Choose Mode**: 
    - Static: Same odds every spin
    - Consume: Winners get reduced chances
-5. **Spin**: Watch the wheel spin and see which photo wins!
+   - Double Spin: Optional toggle for dual photo selection
+5. **Spin**: Watch the wheel spin and see which photo(s) win!
 
 ## Development
 
@@ -83,7 +85,9 @@ Gallery {
   name: string,
   spinMode: 'static' | 'consume',
   categories: Category[],
-  photos: Photo[]
+  photos: Photo[],
+  coverPhotoId?: string, // v1.1
+  doubleSpinEnabled?: boolean // v1.2
 }
 
 Category {
@@ -169,12 +173,33 @@ interface Gallery {
   categories: Category[];
   photos: Photo[];
   coverPhotoId?: string; // New in v1.1
+  doubleSpinEnabled?: boolean; // New in v1.2
 }
 ```
 
+### Version 1.2 Development Plan
+
+#### Phase 8: Edit Category Feature
+- [ ] 8.1 Add edit button to each category in Categories tab
+- [ ] 8.2 Implement category edit modal with pre-populated values
+- [ ] 8.3 Add validation to prevent duplicate category names
+- [ ] 8.4 Update category color and refresh all UI elements
+- [ ] 8.5 Test category editing with photo assignments intact
+
+#### Phase 9: Double Spin Mode
+- [ ] 9.1 Add `doubleSpinEnabled` field to Gallery TypeScript interface
+- [ ] 9.2 Add double spin toggle to gallery settings UI
+- [ ] 9.3 Extend WheelEngine to support category-aware dual selection
+- [ ] 9.4 Update WheelRenderer for sequential spin animations
+- [ ] 9.5 Modify result display to show two winning photos
+- [ ] 9.6 Update session state management for dual consume tracking
+- [ ] 9.7 Add fallback logic for single-category scenarios
+
 **Key Implementation Areas:**
-- `src/types/index.ts` - Add coverPhotoId to Gallery interface
-- `index.html` - Add lightbox modal structure
-- `src/style.css` - Add lightbox and gallery cover styles
-- `src/app.ts` - Add lightbox handlers and cover photo logic
-- `src/lib/storage.ts` - Update gallery save/load for cover photos
+- `src/types/index.ts` - Add doubleSpinEnabled to Gallery interface
+- `index.html` - Add edit category buttons and double spin toggle
+- `src/style.css` - Add edit category and dual result display styles
+- `src/app.ts` - Add edit category handlers and double spin logic
+- `src/lib/wheel.ts` - Extend for category-aware dual selection
+- `src/lib/animation.ts` - Add sequential spin animation support
+- `src/lib/storage.ts` - Update gallery save/load for new fields
